@@ -1,56 +1,62 @@
 # settings.yaml
 
-Путь по умолчанию: `settings.yaml` в корне репозитория. Переопределение: `--settings PATH` или файл рядом со skill.
+Путь по умолчанию: `settings.yaml` в корне репозитория. Переопределение: `--settings PATH`.
 
 Токены и URL MCP в YAML не клади. Jira и Bitbucket ходят через уже подключённые MCP.
 
-## Пункт 1 — поиск (`source`)
+## Поиск (`source`) — этап A, пункт 1
 
 | Поле | Смысл |
 | --- | --- |
-| `project` / `space` | Пространство Jira (project key) |
-| `issue_type` / `type` | Тип задачи, например `Improvement` |
+| `project` / `space` | Пространство Jira |
+| `issue_type` / `type` | Тип, например `Improvement` |
 | `label` | Метка |
-| `status` | Статус |
+| `status` | Статус поиска |
+| `done` / `done_status` | Финальный статус Improvement после merge кода (этап C7); иначе блок `improvement_done` |
 
-JQL: `project = "…" AND issuetype = "…" AND labels = "…" AND status = "…"`.
+## Story (`story`) — этап A, пункт 2
 
-## Пункт 2 — создаваемая задача (`story`)
+- `project`, `issue_type`, `label`, `status`, `link_type`, `summary_pattern`
+- `done` / `done_status` — финальный статус Story после merge кода (C6)
+- служебная метка `sdd-from-{SOURCE-KEY}`
 
-Те же поля `project`, `issue_type`, `label`, `status`. Дополнительно:
+## Репа спек (`bitbucket`) — этапы A и B
 
-- `link_type` — связь Story с исходной задачей (по умолчанию `Relates`)
-- `summary_pattern` — `{source_key}`, `{source_summary}`
+- `repository` — URL репозитория со спеками
+- `default_branch`
+- `source_branch_pattern` — ветка Improvement
+- `story_branch_pattern` — ветка Story
+- `task_branch_pattern` — ветка таски для спеки кода (этап B), по умолчанию `feature/{key}`
 
-На Story вешается служебная метка `sdd-from-{SOURCE-KEY}` — повторный запуск не создаёт дубликат.
+Ключ `git:` принимается как синоним `bitbucket:`.
 
-## Пункт 3 — репозиторий (`bitbucket`)
+## Таска компонента (`related`) — этап A, пункт 5 и этапы B/C
 
-Ключ `git:` тоже принимается как синоним.
+- `issue_type`, `link_type`, `component`, `component_from_source`
+- `in_progress` / `in_progress_status` — статус «таска в работе» после merge спеки кода (B4)
+- `done` / `done_status` — финальный статус таски после merge кода (C5)
+- служебная метка `sdd-impl-{STORY-KEY}`
 
-- `repository` — HTTPS или SSH URL Bitbucket Cloud / Server
-- `workspace`, `repo_slug`, `project` — если URL нестандартный; иначе разберёт CLI `plan`
-- `source_branch_pattern` — ветка с номером задачи пункта 1, по умолчанию `feature/{key}`
-- `story_branch_pattern` — ветка с номером задачи пункта 2
-- `default_branch` — откуда ветвятся обе feature-ветки
+## Репа компонента (`component`) — этап C
 
-## Пункт 5 — связанная задача (`related`)
+Обязательно.
 
-- `issue_type` — тип (Task, Sub-task, …)
-- `link_type` — тип связи Jira (`Relates`, `Blocks`, …)
-- `component` — компонент, для которого вносится изменение
-- `component_from_source: true` — сначала взять Component с исходной задачи
+- `repository` — URL репозитория, где пишется код
+- `default_branch` — мастер (часто `master`)
+- `task_branch_pattern` — по умолчанию `task/{key}`
+- `story_branch_pattern` — ветка Story в этой же репе, от того же мастера
 
-Служебная метка: `sdd-impl-{STORY-KEY}` (или `{related.label}-{STORY-KEY}`).
+## Improvement после BR/FR (`after_merge`) — пункт 8
 
-## Пункт 8 — после merge (`after_merge.statuses`)
+`statuses`: `В работе`, `In Progress`. Ключ `done:` на верхнем уровне ещё читается как синоним `after_merge:`.
 
-Список имён перехода/статуса исходной задачи. Первое совпадение без учёта регистра: `В работе`, `In Progress`.
+## Improvement после кода (`improvement_done`) — C7
 
-Ключ `done:` в YAML ещё принимается как синоним `after_merge:`.
+`statuses`: `Сделан`, `Done`.
 
-## Опционально
+## OpenSpec
 
-- `jira.base_url` — только чтобы собрать browse-ссылки в отчёте. Для API не используется.
-- `openspec.capabilities` / `change_id_pattern`
-- `limits.max_issues`
+- `capabilities` — BR/FR
+- `change_id_pattern` — `{source_key}`
+- `implementation_capability` — по умолчанию `code-changes`
+- `implementation_change_id_pattern` — `{task_key}`

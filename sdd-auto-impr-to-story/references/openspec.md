@@ -1,4 +1,4 @@
-# OpenSpec BR / FR
+# OpenSpec BR / FR / code-changes
 
 Генерировать требования только инструментами OpenSpec и форматом delta spec.
 
@@ -14,7 +14,15 @@ openspec instructions specs --change <change-id>
 openspec validate --change <change-id>
 ```
 
-`change-id` = kebab-case ключа исходной задачи, например `impr-12`.
+Для BR/FR `change-id` = kebab-case ключа исходной задачи (`impr-12`).
+
+Для спеки кода `change-id` = kebab-case ключа таски (`dev-55`), паттерн `openspec.implementation_change_id_pattern`.
+
+После спеки кода, в репе компонента:
+
+```bash
+openspec instructions apply --change <impl-id>
+```
 
 ## Обязательные артефакты
 
@@ -24,6 +32,12 @@ openspec/changes/<change-id>/
   proposal.md
   specs/business-requirements/spec.md
   specs/functional-requirements/spec.md
+
+openspec/changes/<task-change-id>/
+  .openspec.yaml
+  proposal.md
+  design.md
+  specs/code-changes/spec.md
 ```
 
 Шаблоны: `assets/openspec/`.
@@ -40,7 +54,10 @@ openspec/changes/<change-id>/
 ## Разделение BR и FR
 
 - `business-requirements` — ценность, акторы, ограничения, критерии приёмки для бизнеса. Без классов, фреймворков и API-методов.
-- `functional-requirements` — наблюдаемое поведение системы, входы, выходы, ошибки. Без внутреннего дизайна (это `design.md`, его этот skill не пишет).
+- `functional-requirements` — наблюдаемое поведение системы, входы, выходы, ошибки. Без внутреннего дизайна на этапе BR/FR.
+- `code-changes` — как меняется **компонент**. `design.md` пишется на этапе B.
+
+Источник правды для BR/FR — описание задачи пункта 1. Для code-changes — принятые BR/FR плюс скоуп компонента.
 
 Источник правды для текста — описание задачи пункта 1, не выдуманный скоуп.
 

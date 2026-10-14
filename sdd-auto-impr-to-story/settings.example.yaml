@@ -20,39 +20,55 @@ story:
   status: To Do
   link_type: Relates     # связь Story ↔ исходная Improvement
   summary_pattern: "{source_key}: {source_summary}"
+  done_status: Сделан                      # после merge кода (C6)
 
-# Пункты 3, 6, 7: репозиторий Bitbucket (ветки и PR через MCP)
+# Репозиторий спек (этапы A и B): BR/FR и спека кода
 bitbucket:
-  repository: https://bitbucket.org/workspace/app.git
+  repository: https://bitbucket.org/workspace/specs.git
   default_branch: main
-  source_branch_pattern: "feature/{key}"   # ветка с номером задачи пункта 1
-  story_branch_pattern: "feature/{key}"    # ветка с номером задачи пункта 2
-  # workspace: workspace                   # если URL нестандартный
-  # repo_slug: app
-  # project: APP                           # Bitbucket Server/DC project key
+  source_branch_pattern: "feature/{key}"   # ветка Improvement
+  story_branch_pattern: "feature/{key}"    # ветка Story
+  task_branch_pattern: "feature/{key}"     # ветка таски компонента (этап B)
 
-# Пункт 5: связанная задача (тип, тип связи, компонент изменения)
+# Репозиторий компонента (этап C): генерация кода
+component:
+  repository: https://bitbucket.org/workspace/payments.git
+  default_branch: master                   # мастер-ветка репы компонента
+  task_branch_pattern: "task/{key}"
+  story_branch_pattern: "feature/{key}"    # ветка Story в репе компонента
+
+# Связанная задача / таска компонента
 related:
   issue_type: Task
   link_type: Relates
-  component: backend           # компонент Jira, для которого будет изменение
-  component_from_source: true  # если у Improvement уже есть Component — взять его
-  # project: DEV               # по умолчанию = story.project
+  component: backend
+  component_from_source: true
+  # project: DEV
   label: sdd-impl
   status: To Do
   summary_pattern: "[{component}] {story_key}: {story_summary}"
+  in_progress_status: В работе             # после merge спеки кода (B4)
+  done_status: Сделан                      # после merge кода (C5)
 
-# Пункт 8: статус исходной задачи после мержа PR
+# После merge BR/FR (пункт 8): Improvement в работу
 after_merge:
   statuses:
     - В работе
     - In Progress
+
+# После merge кода (C7): финальный статус Improvement
+improvement_done:
+  statuses:
+    - Сделан
+    - Done
 
 openspec:
   capabilities:
     - business-requirements
     - functional-requirements
   change_id_pattern: "{source_key}"
+  implementation_capability: code-changes
+  implementation_change_id_pattern: "{task_key}"
 
 limits:
   max_issues: 20

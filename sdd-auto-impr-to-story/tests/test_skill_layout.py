@@ -29,6 +29,10 @@ def test_example_settings_parse():
     data = yaml.safe_load((ROOT / "settings.example.yaml").read_text(encoding="utf-8"))
     settings = parse_settings(data)
     assert settings.source.project == "IMPR"
-    assert settings.bitbucket.repository.endswith("app.git")
+    assert settings.bitbucket.repository.endswith("specs.git")
     assert "В работе" in settings.after_merge.statuses
     assert "In Progress" in settings.after_merge.statuses
+    assert settings.component.repository.endswith("payments.git")
+    assert "Сделан" in settings.related.done_statuses
+    assert "Сделан" in settings.story.done_statuses
+    assert "Сделан" in settings.improvement_done.statuses

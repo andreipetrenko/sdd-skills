@@ -4,7 +4,7 @@
 
 | Скилл | Назначение |
 | --- | --- |
-| [`sdd-auto-impr-to-story`](sdd-auto-impr-to-story/) | Improvement → Story → OpenSpec BR/FR → ветки Bitbucket → PR |
+| [`sdd-auto-impr-to-story`](sdd-auto-impr-to-story/) | Improvement → Story → OpenSpec BR/FR → спека кода → код в репе компонента |
 
 Промпт для воспроизведения в другой сессии: [`sdd-auto-impr-to-story/PROMPT.md`](sdd-auto-impr-to-story/PROMPT.md).
 

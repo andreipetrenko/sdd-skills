@@ -3,7 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from sdd_auto_impr_to_story.models import JiraIssue
-from sdd_auto_impr_to_story.openspec import scaffold_change, validate_change
+from sdd_auto_impr_to_story.openspec import (
+    scaffold_change,
+    scaffold_implementation_change,
+    validate_change,
+)
 
 
 def test_scaffold_writes_br_and_fr(settings, tmp_path: Path):
@@ -35,6 +39,29 @@ def test_scaffold_writes_br_and_fr(settings, tmp_path: Path):
     assert "DEV-40" in proposal
     assert "bitbucket.org/acme/app.git" in proposal
     assert validate_change(target) == []
+
+
+def test_scaffold_implementation_spec(settings, tmp_path: Path):
+    source = JiraIssue(
+        key="IMPR-12",
+        summary="Notify when invoice is overdue",
+        description="- The system sends a reminder email after 3 days\n",
+        issue_type="Improvement",
+        status="To Do",
+    )
+    target = scaffold_implementation_change(
+        tmp_path, settings, source, "DEV-40", "DEV-55", component="payments"
+    )
+    assert (target / "proposal.md").is_file()
+    assert (target / "design.md").is_file()
+    spec = target / "specs" / "code-changes" / "spec.md"
+    assert spec.is_file()
+    text = spec.read_text(encoding="utf-8")
+    assert "### Requirement:" in text
+    assert "payments" in text
+    assert "SHALL" in text
+    assert validate_change(target) == []
+    assert settings.implementation_change_id("DEV-55", "IMPR-12") == "dev-55"
 
 
 def test_validate_detects_missing_scenarios(tmp_path: Path):

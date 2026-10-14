@@ -23,6 +23,7 @@ def test_space_alias_and_repository_shortcut():
             "source": {"space": "IMPR", "type": "Improvement", "label": "x", "status": "Open"},
             "story": {"project": "DEV", "issue_type": "Story"},
             "git": "https://bitbucket.org/acme/app.git",
+            "component": "https://bitbucket.org/acme/payments.git",
             "related": {"issue_type": "Task", "link_type": "Blocks"},
         }
     )
@@ -31,6 +32,9 @@ def test_space_alias_and_repository_shortcut():
     assert settings.related.link_type == "Blocks"
     assert settings.jira_base_url is None
     assert settings.after_merge.statuses == ("В работе", "In Progress")
+    assert settings.component.repository == "https://bitbucket.org/acme/payments.git"
+    assert settings.component.default_branch == "master"
+    assert settings.component_task_branch_name("DEV-55") == "task/DEV-55"
 
 
 def test_missing_required_fields():
@@ -40,6 +44,16 @@ def test_missing_required_fields():
                 "source": {"project": "A", "issue_type": "Improvement"},
                 "story": {"project": "B", "issue_type": "Story"},
                 "related": {"issue_type": "Task", "link_type": "Relates"},
+                "component": {"repository": "https://bitbucket.org/a/c.git"},
+            }
+        )
+    with pytest.raises(SettingsError, match="component.repository"):
+        parse_settings(
+            {
+                "source": {"project": "A", "issue_type": "Improvement"},
+                "story": {"project": "B", "issue_type": "Story"},
+                "bitbucket": {"repository": "https://bitbucket.org/a/b.git"},
+                "related": {"issue_type": "Task", "link_type": "Relates"},
             }
         )
     with pytest.raises(SettingsError, match="related.issue_type"):
@@ -48,6 +62,7 @@ def test_missing_required_fields():
                 "source": {"project": "A", "issue_type": "Improvement"},
                 "story": {"project": "B", "issue_type": "Story"},
                 "bitbucket": {"repository": "https://bitbucket.org/a/b.git"},
+                "component": {"repository": "https://bitbucket.org/a/c.git"},
                 "related": {"link_type": "Relates"},
             }
         )
@@ -59,6 +74,7 @@ def test_jql_escapes_quotes():
             "source": {"project": "IMPR", "issue_type": 'Foo "Bar"', "status": "Сделан"},
             "story": {"project": "DEV", "issue_type": "Story"},
             "bitbucket": {"repository": "https://bitbucket.org/a/b.git"},
+            "component": {"repository": "https://bitbucket.org/a/c.git"},
             "related": {"issue_type": "Task", "link_type": "Relates"},
         }
     )
@@ -71,6 +87,7 @@ def test_done_yaml_key_aliases_after_merge():
             "source": {"project": "IMPR", "issue_type": "Improvement"},
             "story": {"project": "DEV", "issue_type": "Story"},
             "bitbucket": {"repository": "https://bitbucket.org/a/b.git"},
+            "component": {"repository": "https://bitbucket.org/a/c.git"},
             "related": {"issue_type": "Task", "link_type": "Relates"},
             "done": {"statuses": ["В работе"]},
         }

@@ -31,6 +31,8 @@ def test_issue_plan(settings_file: Path, capsys):
             "Need a file download",
             "--story",
             "DEV-40",
+            "--task",
+            "DEV-55",
             "--component",
             "payments",
         ]
@@ -40,6 +42,7 @@ def test_issue_plan(settings_file: Path, capsys):
     assert plan["pr"]["head"] == "feature/IMPR-12"
     assert plan["pr"]["base"] == "feature/DEV-40"
     assert plan["component"] == "payments"
+    assert plan["implementation"]["component_repo"]["task_branch"] == "task/DEV-55"
 
 
 def test_scaffold_and_validate(settings_file: Path, tmp_path: Path, capsys):

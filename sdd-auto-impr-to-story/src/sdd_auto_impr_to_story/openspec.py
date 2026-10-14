@@ -23,6 +23,13 @@ CAPABILITY_META = {
             "and error cases that can be verified by tests or review."
         ),
     },
+    "code-changes": {
+        "title": "Code changes",
+        "purpose": (
+            "Code-change requirements describe how the component must be modified "
+            "so that the accepted business and functional requirements can be implemented."
+        ),
+    },
 }
 
 
@@ -56,6 +63,110 @@ def scaffold_change(
         )
     _ensure_openspec_root(repo)
     return target
+
+
+def scaffold_implementation_change(
+    repo: Path,
+    settings: Settings,
+    source: JiraIssue,
+    story_key: str,
+    task_key: str,
+    component: str | None = None,
+) -> Path:
+    change_id = settings.implementation_change_id(task_key, source.key)
+    capability = settings.openspec.implementation_capability
+    target = change_dir(repo, change_id)
+    target.mkdir(parents=True, exist_ok=True)
+    (target / ".openspec.yaml").write_text("schema: spec-driven\n", encoding="utf-8")
+    (target / "proposal.md").write_text(
+        render_implementation_proposal(settings, source, story_key, task_key, component),
+        encoding="utf-8",
+    )
+    spec_path = target / "specs" / capability / "spec.md"
+    spec_path.parent.mkdir(parents=True, exist_ok=True)
+    spec_path.write_text(
+        render_capability_spec(capability, source, component=component),
+        encoding="utf-8",
+    )
+    (target / "design.md").write_text(
+        render_implementation_design(source, story_key, task_key, component),
+        encoding="utf-8",
+    )
+    _ensure_openspec_root(repo)
+    return target
+
+
+def render_implementation_proposal(
+    settings: Settings,
+    source: JiraIssue,
+    story_key: str,
+    task_key: str,
+    component: str | None,
+) -> str:
+    capability = settings.openspec.implementation_capability
+    title = CAPABILITY_META.get(capability, {}).get("title", capability)
+    why = source.summary.strip() or "Implement the accepted requirements in the component."
+    body = source.description.strip() or "See the source Jira issue and BR/FR specs."
+    component_name = component or settings.related.component or "unspecified"
+    return f"""# Proposal
+
+## Why
+
+{why}
+
+After business and functional requirements for `{source.key}` are merged, the `{component_name}` component needs an implementation spec.
+
+## What Changes
+
+- Capture code-change requirements for component `{component_name}`.
+- Scope the work to Jira task `{task_key}` under story `{story_key}`.
+
+## Capabilities
+
+### New Capabilities
+- `{capability}`: {title}
+
+### Modified Capabilities
+
+## Impact
+
+- Jira: `{source.key}` / `{story_key}` / `{task_key}`
+- Specs repository: `{settings.bitbucket.repository}`
+- Component repository: `{settings.component.repository}`
+
+## Source description
+
+{body}
+"""
+
+
+def render_implementation_design(
+    source: JiraIssue,
+    story_key: str,
+    task_key: str,
+    component: str | None,
+) -> str:
+    component_name = component or "unspecified"
+    return f"""# Design
+
+## Context
+
+Implement `{source.key}` ({source.summary}) in component `{component_name}` as task `{task_key}` of story `{story_key}`.
+
+## Goals
+
+- Change only the `{component_name}` component.
+- Satisfy the merged business and functional requirements.
+
+## Non-Goals
+
+- Unrelated refactors
+- Changes outside `{component_name}`
+
+## Approach
+
+Describe modules, interfaces and data flow for `{component_name}` that realize the code-change spec.
+"""
 
 
 def render_proposal(settings: Settings, source: JiraIssue, story_key: str | None) -> str:
@@ -98,13 +209,17 @@ Source improvement `{source.key}` needs business and functional requirements bef
 """
 
 
-def render_capability_spec(capability: str, source: JiraIssue) -> str:
+def render_capability_spec(
+    capability: str,
+    source: JiraIssue,
+    component: str | None = None,
+) -> str:
     meta = CAPABILITY_META.get(capability, {})
     title = meta.get("title", capability.replace("-", " ").title())
     purpose = meta.get("purpose", f"Requirements for {capability}.")
     bullets = _extract_needles(source.description) or [source.summary]
     requirements = [
-        _requirement_block(index, capability, source, needle)
+        _requirement_block(index, capability, source, needle, component=component)
         for index, needle in enumerate(bullets, start=1)
     ]
     joined = "\n\n".join(requirements)
@@ -185,8 +300,19 @@ def _extract_needles(description: str) -> list[str]:
     return lines
 
 
-def _requirement_block(index: int, capability: str, source: JiraIssue, needle: str) -> str:
-    kind = "business" if capability.startswith("business") else "functional"
+def _requirement_block(
+    index: int,
+    capability: str,
+    source: JiraIssue,
+    needle: str,
+    component: str | None = None,
+) -> str:
+    if capability.startswith("business"):
+        kind = "business"
+    elif capability in {"code-changes", "implementation"} or capability.startswith("code"):
+        kind = "code"
+    else:
+        kind = "functional"
     name = _requirement_name(kind, index, needle)
     if kind == "business":
         statement = (
@@ -204,6 +330,15 @@ def _requirement_block(index: int, capability: str, source: JiraIssue, needle: s
         scenario_name = "Primary flow succeeds"
         given = "the system is available and the actor is authorized"
         then = "the functional outcome is visible to the actor"
+    if kind == "code":
+        component_name = component or "the component"
+        statement = (
+            f"The `{component_name}` component SHALL implement \"{needle}\" "
+            f"from `{source.key}` without changing unrelated modules."
+        )
+        scenario_name = "Component change is complete"
+        given = f"the `{component_name}` codebase is on the task branch"
+        then = "the code change is present and the requirement is satisfied"
     return f"""### Requirement: {name}
 
 {statement}

@@ -19,7 +19,10 @@ def test_build_plan_includes_jql_and_mcp_aliases(settings):
     assert "createBitbucketRepoBranch" in plan["mcp"]["bitbucket_tool_aliases"]["create_branch"]
     assert plan["steps"][0].startswith("1 ")
     assert plan["after_merge_statuses"] == ["В работе", "In Progress"]
-    assert "In Progress" in plan["steps"][-1]
+    assert plan["component"]["repo_slug"] == "payments"
+    assert plan["component"]["default_branch"] == "master"
+    assert "In Progress" in plan["steps"][7]
+    assert "improvement to done" in plan["steps"][-1]
     assert "Do not call REST" in plan["mcp"]["rule"]
 
 
@@ -32,7 +35,7 @@ def test_issue_plan_pr_maps_source_branch_to_story_branch(settings):
         status="To Do",
         components=("payments",),
     )
-    plan = build_issue_plan(settings, source, story_key="DEV-40")
+    plan = build_issue_plan(settings, source, story_key="DEV-40", task_key="DEV-55")
     assert plan["source_branch"] == "feature/IMPR-12"
     assert plan["story_branch"] == "feature/DEV-40"
     assert plan["pr"]["head"] == "feature/IMPR-12"
@@ -40,6 +43,13 @@ def test_issue_plan_pr_maps_source_branch_to_story_branch(settings):
     assert plan["openspec_change"] == "impr-12"
     assert plan["component"] == "payments"
     assert "sdd-from-IMPR-12" in plan["story_fields"]["labels"]
+    impl = plan["implementation"]
+    assert impl["openspec_change"] == "dev-55"
+    assert impl["specs_repo"]["task_branch"] == "feature/DEV-55"
+    assert impl["specs_repo"]["pr"]["base"] == "feature/DEV-40"
+    assert impl["component_repo"]["task_branch"] == "task/DEV-55"
+    assert impl["component_repo"]["pr"]["base"] == "feature/DEV-40"
+    assert impl["statuses"]["task_in_progress"] == ["В работе"]
 
 
 def test_resolve_tool_names_picks_first_available_alias():

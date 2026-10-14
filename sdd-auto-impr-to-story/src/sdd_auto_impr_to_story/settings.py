@@ -36,6 +36,7 @@ class IssueFilter:
 class StoryConfig(IssueFilter):
     link_type: str = "Relates"
     summary_pattern: str = "{source_key}: {source_summary}"
+    done_statuses: tuple[str, ...] = ("Сделан", "Done")
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,8 @@ class RelatedConfig:
     label: str | None = None
     status: str | None = None
     summary_pattern: str = "[{component}] {story_key}: {story_summary}"
+    in_progress_statuses: tuple[str, ...] = ("В работе", "In Progress")
+    done_statuses: tuple[str, ...] = ("Сделан", "Done")
 
 
 @dataclass(frozen=True)
@@ -59,12 +62,15 @@ class BitbucketConfig:
     default_branch: str = "main"
     source_branch_pattern: str = "feature/{key}"
     story_branch_pattern: str = "feature/{key}"
+    task_branch_pattern: str = "feature/{key}"
 
 
 @dataclass(frozen=True)
 class OpenspecConfig:
     capabilities: tuple[str, ...] = ("business-requirements", "functional-requirements")
     change_id_pattern: str = "{source_key}"
+    implementation_capability: str = "code-changes"
+    implementation_change_id_pattern: str = "{task_key}"
 
 
 @dataclass(frozen=True)
@@ -79,7 +85,11 @@ class Settings:
     story: StoryConfig
     bitbucket: BitbucketConfig
     related: RelatedConfig
+    component: BitbucketConfig
     after_merge: AfterMergeConfig = field(default_factory=AfterMergeConfig)
+    improvement_done: AfterMergeConfig = field(
+        default_factory=lambda: AfterMergeConfig(statuses=("Сделан", "Done"))
+    )
     openspec: OpenspecConfig = field(default_factory=OpenspecConfig)
     max_issues: int = 20
     path: Path | None = None
@@ -101,8 +111,24 @@ class Settings:
     def story_branch_name(self, key: str) -> str:
         return self.bitbucket.story_branch_pattern.format(key=key)
 
+    def specs_task_branch_name(self, key: str) -> str:
+        return self.bitbucket.task_branch_pattern.format(key=key)
+
+    def component_task_branch_name(self, key: str) -> str:
+        return self.component.task_branch_pattern.format(key=key)
+
+    def component_story_branch_name(self, key: str) -> str:
+        return self.component.story_branch_pattern.format(key=key)
+
     def change_id(self, source_key: str) -> str:
         raw = self.openspec.change_id_pattern.format(source_key=source_key)
+        return _kebab(raw)
+
+    def implementation_change_id(self, task_key: str, source_key: str = "") -> str:
+        raw = self.openspec.implementation_change_id_pattern.format(
+            task_key=task_key,
+            source_key=source_key,
+        )
         return _kebab(raw)
 
 
@@ -124,6 +150,10 @@ def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
     story_raw = data.get("story")
     story_filter = _issue_filter(story_raw, "story")
     story_data = story_raw if isinstance(story_raw, dict) else {}
+    story_done = _parse_statuses(
+        story_data.get("done") or story_data.get("done_status") or story_data.get("done_statuses"),
+        ("Сделан", "Done"),
+    )
     story = StoryConfig(
         project=story_filter.project,
         issue_type=story_filter.issue_type,
@@ -131,22 +161,11 @@ def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
         status=story_filter.status,
         link_type=str(story_data.get("link_type") or "Relates"),
         summary_pattern=str(story_data.get("summary_pattern") or "{source_key}: {source_summary}"),
+        done_statuses=story_done,
     )
 
     git_raw = data.get("bitbucket") or data.get("git") or data.get("repository")
-    if isinstance(git_raw, str):
-        git_raw = {"repository": git_raw}
-    if not isinstance(git_raw, dict) or not git_raw.get("repository"):
-        raise SettingsError("bitbucket.repository (ссылка на репозиторий) is required")
-    bitbucket = BitbucketConfig(
-        repository=str(git_raw["repository"]).strip(),
-        workspace=(str(git_raw["workspace"]) if git_raw.get("workspace") else None),
-        repo_slug=(str(git_raw.get("repo_slug") or git_raw.get("repository_slug") or "") or None),
-        project=(str(git_raw["project"]) if git_raw.get("project") else None),
-        default_branch=str(git_raw.get("default_branch") or "main"),
-        source_branch_pattern=str(git_raw.get("source_branch_pattern") or "feature/{key}"),
-        story_branch_pattern=str(git_raw.get("story_branch_pattern") or "feature/{key}"),
-    )
+    bitbucket = _bitbucket_config(git_raw, "bitbucket", default_branch="main")
 
     related_raw = data.get("related") or {}
     if not isinstance(related_raw, dict) or not related_raw.get("issue_type"):
@@ -165,19 +184,38 @@ def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
             related_raw.get("summary_pattern")
             or "[{component}] {story_key}: {story_summary}"
         ),
+        in_progress_statuses=_parse_statuses(
+            related_raw.get("in_progress")
+            or related_raw.get("in_progress_status")
+            or related_raw.get("in_progress_statuses"),
+            ("В работе", "In Progress"),
+        ),
+        done_statuses=_parse_statuses(
+            related_raw.get("done")
+            or related_raw.get("done_status")
+            or related_raw.get("done_statuses"),
+            ("Сделан", "Done"),
+        ),
     )
 
-    after_raw = data.get("after_merge") if data.get("after_merge") is not None else data.get("done")
-    after_raw = after_raw or {}
-    statuses: tuple[str, ...]
-    if isinstance(after_raw, str):
-        statuses = (after_raw,)
-    elif isinstance(after_raw, dict) and isinstance(after_raw.get("status"), str):
-        statuses = (str(after_raw["status"]),)
-    elif isinstance(after_raw, dict) and after_raw.get("statuses"):
-        statuses = tuple(str(item) for item in after_raw["statuses"])
-    else:
-        statuses = ("В работе", "In Progress")
+    component = _bitbucket_config(
+        data.get("component") or data.get("component_repo"),
+        "component",
+        default_branch="master",
+        default_task_pattern="task/{key}",
+    )
+
+    after_raw = data.get("after_merge")
+    if after_raw is None:
+        after_raw = data.get("done")
+    statuses = _parse_statuses(after_raw, ("В работе", "In Progress"))
+    improvement_done = _parse_statuses(
+        data.get("improvement_done")
+        or (data.get("source") or {}).get("done")
+        or (data.get("source") or {}).get("done_status")
+        or (data.get("source") or {}).get("done_statuses"),
+        ("Сделан", "Done"),
+    )
 
     openspec_raw = data.get("openspec") or {}
     capabilities = tuple(
@@ -190,6 +228,12 @@ def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
     openspec = OpenspecConfig(
         capabilities=capabilities or ("business-requirements", "functional-requirements"),
         change_id_pattern=str(openspec_raw.get("change_id_pattern") or "{source_key}"),
+        implementation_capability=str(
+            openspec_raw.get("implementation_capability") or "code-changes"
+        ),
+        implementation_change_id_pattern=str(
+            openspec_raw.get("implementation_change_id_pattern") or "{task_key}"
+        ),
     )
 
     max_issues = int((data.get("limits") or {}).get("max_issues") or data.get("max_issues") or 20)
@@ -199,7 +243,9 @@ def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
         story=story,
         bitbucket=bitbucket,
         related=related,
+        component=component,
         after_merge=AfterMergeConfig(statuses=statuses),
+        improvement_done=AfterMergeConfig(statuses=improvement_done),
         openspec=openspec,
         max_issues=max_issues,
         path=path,
@@ -225,6 +271,46 @@ def find_settings_file(explicit: str | Path | None = None) -> Path:
         "settings.yaml not found. Copy settings.example.yaml to settings.yaml "
         "or pass --settings."
     )
+
+
+def _bitbucket_config(
+    raw: Any,
+    name: str,
+    *,
+    default_branch: str,
+    default_task_pattern: str = "feature/{key}",
+) -> BitbucketConfig:
+    if isinstance(raw, str):
+        raw = {"repository": raw}
+    if not isinstance(raw, dict) or not raw.get("repository"):
+        raise SettingsError(f"{name}.repository (ссылка на репозиторий) is required")
+    source_pattern = str(raw.get("source_branch_pattern") or "feature/{key}")
+    return BitbucketConfig(
+        repository=str(raw["repository"]).strip(),
+        workspace=(str(raw["workspace"]) if raw.get("workspace") else None),
+        repo_slug=(str(raw.get("repo_slug") or raw.get("repository_slug") or "") or None),
+        project=(str(raw["project"]) if raw.get("project") else None),
+        default_branch=str(raw.get("default_branch") or default_branch),
+        source_branch_pattern=source_pattern,
+        story_branch_pattern=str(raw.get("story_branch_pattern") or "feature/{key}"),
+        task_branch_pattern=str(raw.get("task_branch_pattern") or default_task_pattern),
+    )
+
+
+def _parse_statuses(raw: Any, default: tuple[str, ...]) -> tuple[str, ...]:
+    if raw is None:
+        return default
+    if isinstance(raw, str):
+        return (raw,)
+    if isinstance(raw, list):
+        values = tuple(str(item) for item in raw if str(item).strip())
+        return values or default
+    if isinstance(raw, dict):
+        if isinstance(raw.get("status"), str):
+            return (str(raw["status"]),)
+        if raw.get("statuses"):
+            return tuple(str(item) for item in raw["statuses"])
+    return default
 
 
 def _issue_filter(raw: Any, name: str) -> IssueFilter:

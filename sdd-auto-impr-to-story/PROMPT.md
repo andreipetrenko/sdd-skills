@@ -6,70 +6,75 @@
 
 Сделай GigaCode-скилл с именем **`sdd-auto-impr-to-story`**.
 
-Это spec-driven конвейер: Improvement из Jira → Story → бизнес- и функциональные требования в OpenSpec → ветки Bitbucket → pull request.
+Spec-driven конвейер: Improvement → Story → OpenSpec BR/FR → спека кода компонента → генерация кода в репе компонента → PR → финальные статусы.
 
 ## Уточнения (обязательны)
 
-- Скилл **для GigaCode**, не для Cursor. Формат: каталог с `SKILL.md` (YAML frontmatter: `name`, `description`) плюс references / assets / scripts.
-- MCP **Jira** и MCP **Bitbucket уже настроены** на агенте. Не пиши REST-клиенты, не проси токены, не клади секреты в YAML, не вызывай GitHub / GitLab / GitVerse API.
-- Forge — **Bitbucket**. URL репозитория — из `settings.yaml`.
-- Все параметры рабочего цикла — **только из `settings.yaml`**. Не выдумывай project / type / label / status / component / repository.
-- Локальный CLI — только чтение настроек, JQL, план полей и каркас/валидация OpenSpec. Запись в Jira и Bitbucket — **только MCP**.
-- Готовый скилл положи в каталог с **наименованием скилла**: `sdd-auto-impr-to-story/` (каталог скиллов: одна папка = один скилл). Чтобы подключить, папку копируют в `.gigacode/skills/sdd-auto-impr-to-story/` целевого проекта.
+- Скилл **для GigaCode**, не для Cursor. Каталог с `SKILL.md` (`name`, `description`) плюс references / assets / scripts.
+- MCP **Jira** и MCP **Bitbucket уже настроены**. Не REST, не токены в YAML, не GitHub/GitLab API.
+- Forge — **Bitbucket**. Два репозитория из настроек: **репа спек** и **репа компонента**.
+- Все параметры — **только из `settings.yaml`**.
+- Локальный CLI — JQL, план полей, каркас/валидация OpenSpec. Запись в Jira/Bitbucket — **только MCP**.
+- Готовый скилл в каталоге **`sdd-auto-impr-to-story/`**. Копируют в `.gigacode/skills/sdd-auto-impr-to-story/`.
+- Не мержить PR самому, пока пользователь не попросил. Статусы менять только после соответствующего merge.
 
-## Пайплайн (ровно 8 пунктов)
+## Этап A — BR/FR (пункты 1–8)
 
-Для каждой найденной исходной задачи:
+1. Найти задачи в Jira: пространство, тип, метка, статус (`source`).
+2. Создать Story: пространство, тип, метка, статус; связь `story.link_type`.
+3. Feature-ветка в **репе спек** с ключом Improvement (`bitbucket.source_branch_pattern`, от `bitbucket.default_branch`).
+4. По описанию Improvement сгенерировать BR и FR инструментами OpenSpec, commit/push в ветку пункта 3.
+5. Создать связанную **таску компонента**: тип, тип связи, компонент (`related`).
+6. Feature-ветка с ключом Story в репе спек (`bitbucket.story_branch_pattern`, от default_branch, не от ветки 3).
+7. PR: ветка 3 → ветка 6 в репе спек.
+8. После merge: Improvement → `after_merge.statuses` (`В работе` / `In Progress`). Story и таску на этом шаге не трогать.
 
-1. **Найти задачи в Jira** по `settings.yaml`: пространство (project/space), тип, метка, статус.
-2. **Создать новую задачу (Story)** по `settings.yaml`: пространство, тип, метка, статус. Связать со исходной типом связи из настроек.
-3. **Создать feature-ветку** в репозитории из настроек. Имя ветки содержит ключ задачи пункта 1 (по умолчанию `feature/{SOURCE-KEY}`). Ветка от `default_branch`.
-4. По **описанию исходной задачи** сгенерировать **бизнес- и функциональные требования** инструментами OpenSpec (`openspec new` / `instructions` / `validate`). Формат delta spec: `### Requirement:` + SHALL/MUST и `#### Scenario:` с GIVEN / WHEN / THEN. Файлы:
-   - `openspec/changes/<change-id>/proposal.md`
-   - `openspec/changes/<change-id>/specs/business-requirements/spec.md`
-   - `openspec/changes/<change-id>/specs/functional-requirements/spec.md`  
-   `change-id` = kebab-case ключа исходной задачи. Commit и push **в ветку пункта 3**.
-5. Для Story из пункта 2 **создать связанную задачу**: тип, тип связи и компонент изменения — из `settings.yaml`. Если у исходной задачи уже есть Component и включён `component_from_source`, взять его.
-6. **Создать feature-ветку** с ключом Story пункта 2 в том же репозитории (по умолчанию `feature/{STORY-KEY}`). Ветка от `default_branch`, **не** от ветки пункта 3 — иначе PR будет пустым.
-7. Открыть **pull request из ветки пункта 3 в ветку пункта 6** (head = Improvement, base = Story). Не в `main`, если это не `story_branch_pattern`.
-8. **После merge** перевести исходную задачу пункта 1 в статус **`В работе` / `In Progress`** (первое совпадение имени перехода без учёта регистра). Не менять статус до merge. Не менять статус Story и related-задачи. Не мержить PR самому, пока пользователь не попросил.
+## Этап B — спека кода в репе спек (после пункта 8)
+
+1. Сгенерировать OpenSpec-спеку **изменений кода в рамках компонента** (`code-changes` + `design.md`) по принятым BR/FR.
+2. Запушить в feature-ветку **репы спек** с номером таски компонента (`bitbucket.task_branch_pattern`, по умолчанию `feature/{TASK-KEY}`).
+3. Создать PR из ветки пункта 2 в ветку с номером Story в той же репе спек.
+4. После merge таску взять в работу: статус = `related.in_progress` / `related.in_progress_status`.
+
+## Этап C — код в репе компонента
+
+5. Создать ветку `task` с номером таски в **репозитории компонента** (`component.repository`) от мастер-ветки `component.default_branch`.
+6. По спеке этапа B запустить **генерацию кода инструментами OpenSpec** (`openspec instructions apply` и реализация по spec/design).
+7. Запушить код в ветку пункта 5.
+8. Создать PR из ветки пункта 5 в ветку с номером Story **в том же репозитории компонента**. Ветку Story в репе компонента создать от той же мастер-ветки.
+9. После merge статус таски → `related.done` / `related.done_status`.
+10. Статус Story → `story.done` / `story.done_status`.
+11. Статус Improvement → `improvement_done` / `source.done`.
 
 ## `settings.yaml`
 
-Пример и схема обязательны. Токенов в файле нет.
+Токенов нет.
 
-| Блок | Пункт | Поля |
+| Блок | Этап | Поля |
 | --- | --- | --- |
-| `source` | 1 | `project` (пространство) / `space`, `issue_type` / `type`, `label`, `status` |
-| `story` | 2 | `project`, `issue_type`, `label`, `status`, `link_type` |
-| `bitbucket` | 3, 6, 7 | `repository`, `default_branch`, `source_branch_pattern`, `story_branch_pattern` |
-| `related` | 5 | `issue_type`, `link_type`, `component`, `component_from_source` |
-| `after_merge` | 8 | `statuses`: `В работе`, `In Progress` |
+| `source` | A1 | `project`, `issue_type`, `label`, `status` |
+| `story` | A2, C10 | `project`, `issue_type`, `label`, `status`, `link_type`, `done_status` |
+| `bitbucket` | A3–A7, B2–B3 | `repository` (репа спек), `default_branch`, `source_branch_pattern`, `story_branch_pattern`, `task_branch_pattern` |
+| `related` | A5, B4, C9 | `issue_type`, `link_type`, `component`, `in_progress_status`, `done_status` |
+| `after_merge` | A8 | Improvement в работу после BR/FR |
+| `component` | C5–C8 | `repository`, `default_branch` (мастер), `task_branch_pattern`, `story_branch_pattern` |
+| `improvement_done` | C11 | финальный статус Improvement |
 
-Дополнительно:
+Идемпотентность: метки `sdd-from-{SOURCE-KEY}`, `sdd-impl-{STORY-KEY}`. Существующие ветки/PR не дублировать.
 
-- служебная метка Story: `sdd-from-{SOURCE-KEY}` — идемпотентность пункта 2;
-- служебная метка related: `sdd-impl-{STORY-KEY}` — идемпотентность пункта 5;
-- `openspec.capabilities`: `business-requirements`, `functional-requirements`;
-- `limits.max_issues`.
+BR = ценность. FR = наблюдаемое поведение. code-changes = как меняется компонент. Источник BR/FR — описание Improvement. Источник code-changes — принятые BR/FR и компонент.
 
-BR = ценность, акторы, ограничения. FR = наблюдаемое поведение. Без классов, фреймворков и плана реализации. Источник скоупа — описание задачи пункта 1.
+## MCP и отчёт
 
-## MCP
+Алиасы Jira/Bitbucket; нет tool — стоп, без curl.
 
-Агент выбирает инструменты по алиасам (camelCase и snake_case): поиск/создание/линк/переходы Jira; создание ветки и PR Bitbucket. Нет совпадения — остановиться и назвать недостающее действие, не подставлять `curl`.
+Перед записью показать план. Этап B только после merge A7 и A8. Этап C только после merge B3 и B4.
 
-## Поведение агента
-
-- Перед живой записью показать план (JQL и список ключей). Без подтверждения не писать в Jira/Bitbucket.
-- Пустой поиск — остановиться, не расширять JQL.
-- Ошибка одной задачи не отменяет отчёт по остальным.
-- В отчёте: source, story, related, source_branch, story_branch, PR URL, исходная «в работе» да/нет.
+В отчёте: ключи Jira, ветки/PR обеих реп, статусы improvement/story/task.
 
 ## Что сдать
 
-- `sdd-auto-impr-to-story/SKILL.md` + `references/` + `assets/` + `scripts/`
-- `settings.example.yaml`
-- README: что делает скилл и как запустить (`/sdd-auto-impr-to-story` в GigaCode)
-- локальные хелперы (JQL / plan / OpenSpec) и тесты на них
-- **не** реализовывать собственный HTTP к Jira/Bitbucket
+- `sdd-auto-impr-to-story/SKILL.md` + references + assets + scripts
+- `settings.example.yaml` со всеми новыми параметрами
+- README, локальные хелперы и тесты
+- **не** свой HTTP к Jira/Bitbucket

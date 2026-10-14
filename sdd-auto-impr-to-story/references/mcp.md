@@ -39,7 +39,7 @@
 
 `link`: inward/outward ключи и `type` = `link_type` из settings. Если tool хочет id типа — сначала `link_types`.
 
-`transition`: id перехода, у которого имя совпало с `after_merge.statuses` без учёта регистра.
+`transition`: id перехода, у которого имя совпало со списком из настроек без учёта регистра (`after_merge`, `related.in_progress`, `related.done`, `story.done`, `improvement_done`).
 
 ## Bitbucket
 
@@ -58,13 +58,16 @@
 
 `create_branch`:
 
-- `name` = `feature/{KEY}` из паттерна
-- старт = `default_branch` (часто `target` / `startPoint` / `from_branch` / `source`)
+- `name` = `feature/{KEY}` или `task/{KEY}` из паттерна
+- старт = `default_branch` репы спек или `component.default_branch` (часто `target` / `startPoint` / `from_branch` / `source`)
+
+Этап C использует `plan.component` (`workspace` / `repo_slug` / `project` из `component.repository`).
 
 `create_pr`:
 
-- source / from / head = ветка пункта 3
-- destination / to / base = ветка пункта 6
-- не в `default_branch`, если base должен быть story-веткой
+- этап A: head = ветка Improvement, base = ветка Story в репе спек
+- этап B: head = ветка таски в репе спек, base = ветка Story в репе спек
+- этап C: head = `task/{TASK-KEY}`, base = ветка Story в репе компонента
+- не в `default_branch` / master, если base должен быть story-веткой
 
 Локальный `git fetch` / `checkout` / `commit` / `push` для OpenSpec-файлов разрешён. Создание веток и PR — через MCP.

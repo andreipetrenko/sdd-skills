@@ -23,11 +23,19 @@ def sample_settings_dict(**overrides) -> dict:
             "label": "sdd-story",
             "status": "To Do",
             "link_type": "Relates",
+            "done_status": "Сделан",
         },
         "bitbucket": {
             "repository": "https://bitbucket.org/acme/app.git",
             "default_branch": "main",
             "source_branch_pattern": "feature/{key}",
+            "story_branch_pattern": "feature/{key}",
+            "task_branch_pattern": "feature/{key}",
+        },
+        "component": {
+            "repository": "https://bitbucket.org/acme/payments.git",
+            "default_branch": "master",
+            "task_branch_pattern": "task/{key}",
             "story_branch_pattern": "feature/{key}",
         },
         "related": {
@@ -37,8 +45,11 @@ def sample_settings_dict(**overrides) -> dict:
             "component_from_source": True,
             "label": "sdd-impl",
             "status": "To Do",
+            "in_progress_status": "В работе",
+            "done_status": "Сделан",
         },
         "after_merge": {"statuses": ["В работе", "In Progress"]},
+        "improvement_done": {"statuses": ["Сделан", "Done"]},
         "openspec": {
             "capabilities": ["business-requirements", "functional-requirements"]
         },
