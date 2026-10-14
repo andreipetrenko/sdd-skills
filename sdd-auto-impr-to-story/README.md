@@ -1,0 +1,77 @@
+# sdd-auto-impr-to-story
+
+Skill для [GigaCode](https://gitverse.ru/docs/ai/ai-assistant-gigacode/gigacode-for-vscode/skills): проводит Improvement из Jira по spec-driven циклу.
+
+Jira и Bitbucket уже должны быть подключены к агенту как MCP. Skill не ходит в REST и не хранит токены.
+
+1. Ищет задачи по пространству, типу, метке и статусу из `settings.yaml`
+2. На каждую найденную создаёт Story (тоже по параметрам из настроек)
+3. Создаёт feature-ветку с номером исходной задачи в репозитории Bitbucket
+4. Генерирует бизнес- и функциональные требования в формате [OpenSpec](https://openspec.dev) и пушит их в эту ветку
+5. Создаёт связанную задачу нужного типа, с нужным типом связи и компонентом изменения
+6. Создаёт feature-ветку с номером Story в том же репозитории
+7. Открывает pull request **из ветки пункта 3 в ветку пункта 6**
+8. После мержа переводит исходную задачу в `В работе` / `In Progress`
+
+## Быстрый старт
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp settings.example.yaml settings.yaml
+```
+
+Заполните `settings.yaml`. Секреты не нужны: агент GigaCode вызывает уже настроенные MCP Jira и Bitbucket.
+
+Локальный CLI только читает настройки, печатает JQL/план полей и работает с OpenSpec:
+
+```bash
+python -m sdd_auto_impr_to_story --settings settings.yaml jql
+python -m sdd_auto_impr_to_story --settings settings.yaml plan
+python -m sdd_auto_impr_to_story --settings settings.yaml issue-plan IMPR-12 \
+  --summary "..." --description "..."
+```
+
+То же через обёртку skill:
+
+```bash
+python scripts/run.py --settings settings.yaml plan
+```
+
+В проекте, куда скилл скопирован как `.gigacode/skills/sdd-auto-impr-to-story/`:
+
+```bash
+python .gigacode/skills/sdd-auto-impr-to-story/scripts/run.py --settings settings.yaml plan
+```
+
+## GigaCode skill
+
+Чтобы подключить скилл, скопируйте эту папку в `.gigacode/skills/sdd-auto-impr-to-story/` целевого проекта. В агенте вызовите `/sdd-auto-impr-to-story` или опишите Improvement→Story / SDD.
+
+Агент:
+
+- читает `settings.yaml`
+- ищет и создаёт задачи **только через Jira MCP**
+- создаёт ветки и PR **только через Bitbucket MCP**
+- пишет BR/FR через инструменты OpenSpec (`openspec new`, `openspec instructions`, `openspec validate`)
+- открывает PR `feature/{IMPROVEMENT}` → `feature/{STORY}`
+- не переводит исходную задачу в работу, пока PR не смержен
+
+## settings.yaml
+
+| Блок | Пункт | Поля |
+| --- | --- | --- |
+| `source` | 1 | `project` (пространство), `issue_type`, `label`, `status` |
+| `story` | 2 | `project`, `issue_type`, `label`, `status` |
+| `bitbucket` | 3, 6, 7 | `repository` |
+| `related` | 5 | `issue_type`, `link_type`, `component` |
+| `after_merge` | 8 | `statuses`: `В работе`, `In Progress` |
+
+Полный пример — `settings.example.yaml`. Разбор полей — `references/settings.md`.
+
+## Тесты
+
+```bash
+python -m pytest
+```

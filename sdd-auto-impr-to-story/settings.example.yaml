@@ -1,0 +1,58 @@
+# Copy to settings.yaml and fill in your Jira / Bitbucket values.
+# Do not put tokens here. Jira and Bitbucket go through the agent's MCP servers.
+
+# Optional: only used to print browse URLs in the report.
+jira:
+  base_url: https://jira.example.com
+
+# Пункт 1: какие задачи искать (пространство, тип, метка, статус)
+source:
+  project: IMPR          # пространство / project key
+  issue_type: Improvement
+  label: ready-for-sdd
+  status: To Do
+
+# Пункт 2: какую задачу создавать по каждой найденной
+story:
+  project: DEV
+  issue_type: Story
+  label: sdd-story
+  status: To Do
+  link_type: Relates     # связь Story ↔ исходная Improvement
+  summary_pattern: "{source_key}: {source_summary}"
+
+# Пункты 3, 6, 7: репозиторий Bitbucket (ветки и PR через MCP)
+bitbucket:
+  repository: https://bitbucket.org/workspace/app.git
+  default_branch: main
+  source_branch_pattern: "feature/{key}"   # ветка с номером задачи пункта 1
+  story_branch_pattern: "feature/{key}"    # ветка с номером задачи пункта 2
+  # workspace: workspace                   # если URL нестандартный
+  # repo_slug: app
+  # project: APP                           # Bitbucket Server/DC project key
+
+# Пункт 5: связанная задача (тип, тип связи, компонент изменения)
+related:
+  issue_type: Task
+  link_type: Relates
+  component: backend           # компонент Jira, для которого будет изменение
+  component_from_source: true  # если у Improvement уже есть Component — взять его
+  # project: DEV               # по умолчанию = story.project
+  label: sdd-impl
+  status: To Do
+  summary_pattern: "[{component}] {story_key}: {story_summary}"
+
+# Пункт 8: статус исходной задачи после мержа PR
+after_merge:
+  statuses:
+    - В работе
+    - In Progress
+
+openspec:
+  capabilities:
+    - business-requirements
+    - functional-requirements
+  change_id_pattern: "{source_key}"
+
+limits:
+  max_issues: 20

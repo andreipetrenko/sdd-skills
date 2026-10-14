@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+.sdd-auto-state.json
+settings.yaml
+.env
+.coverage
+htmlcov/
+*.log
+sdd-skills.zip
+sdd-skills.bundle
