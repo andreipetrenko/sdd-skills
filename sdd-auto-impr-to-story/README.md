@@ -2,6 +2,8 @@
 
 Skill для [GigaCode](https://gitverse.ru/docs/ai/ai-assistant-gigacode/gigacode-for-vscode/skills): проводит Improvement из Jira по spec-driven циклу.
 
+Исходный запрос для новой сессии: [`PROMPT.md`](PROMPT.md).
+
 Jira и Bitbucket уже должны быть подключены к агенту как MCP. Skill не ходит в REST и не хранит токены.
 
 1. Ищет задачи по пространству, типу, метке и статусу из `settings.yaml`

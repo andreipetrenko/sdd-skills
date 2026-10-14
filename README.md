@@ -6,6 +6,8 @@
 | --- | --- |
 | [`sdd-auto-impr-to-story`](sdd-auto-impr-to-story/) | Improvement → Story → OpenSpec BR/FR → ветки Bitbucket → PR |
 
+Промпт для воспроизведения в другой сессии: [`sdd-auto-impr-to-story/PROMPT.md`](sdd-auto-impr-to-story/PROMPT.md).
+
 Чтобы подключить скилл, скопируйте его папку в `.gigacode/skills/` целевого проекта:
 
 ```bash
