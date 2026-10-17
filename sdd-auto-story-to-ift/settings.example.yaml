@@ -1,0 +1,30 @@
+# Copy to settings.yaml and fill in your Jira values.
+# Do not put tokens here. Jira goes through the agent's MCP server.
+
+# Optional: only used to print browse URLs in the report.
+jira:
+  base_url: https://jira.example.com
+
+# Пункт 1: какие Story искать (пространство, тип, метка, статус)
+source:
+  project: DEV           # пространство / project key
+  issue_type: Story
+  label: sdd-story
+  status: In Progress
+
+# Пункты 2–3: какие дочерние задачи учитывать и какой у них ready-статус
+children:
+  issue_type:
+    - Task
+    - Sub-task
+    - Subtask
+  ready_status: Готов    # все дети должны быть в этом статусе
+
+# Пункт 4: куда переводить Story, если все дети ready
+target:
+  statuses:
+    - Ready for IFT
+
+limits:
+  max_issues: 20
+  max_children: 100
