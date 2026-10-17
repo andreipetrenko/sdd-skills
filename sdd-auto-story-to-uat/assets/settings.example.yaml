@@ -1,0 +1,52 @@
+# Copy to settings.yaml and fill in your Jira / Bitbucket values.
+# Do not put tokens here. Jira and Bitbucket go through the agent's MCP servers.
+
+# Optional: only used to print browse URLs in the report.
+jira:
+  base_url: https://jira.example.com
+
+# Пункт 1: какую release-задачу искать (пространство, тип, метка, статус)
+source:
+  project: REL           # пространство / project key
+  issue_type: Task
+  label: release
+  status: In Progress
+
+# Пункт 3: какие Story относятся к релизу
+stories:
+  issue_type: Story
+  via: both              # parent | linked | both
+  # link_type: Relates
+  # project: DEV
+  # status: Ready for IFT
+
+# Пункты 2 и 5: номер релиза и паттерн release-ветки
+release:
+  # number: "1.2"        # явный номер; иначе из fixVersion / summary
+  # number_field: fixVersions
+  number_pattern: '(\d+(?:\.\d+)*)'
+  branch_pattern: "release/{number}"
+
+# Репозитории, где искать PR Story
+bitbucket:
+  repository: https://bitbucket.org/workspace/payments.git
+  # repositories:
+  #   - https://bitbucket.org/workspace/specs.git
+
+# Какие PR учитывать
+pr:
+  include_child_keys: true
+  ignore_destination_prefixes:
+    - feature/
+    - task/
+
+# Пункт 6: куда переводить Story
+target:
+  statuses:
+    - Ready for UAT
+
+limits:
+  max_issues: 20
+  max_stories: 100
+  max_children: 100
+  max_prs: 100
