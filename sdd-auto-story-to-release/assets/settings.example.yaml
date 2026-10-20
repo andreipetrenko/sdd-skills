@@ -1,0 +1,48 @@
+# Copy to settings.yaml and fill in your Jira / Bitbucket values.
+# Do not put tokens here. Jira and Bitbucket go through the agent's MCP servers.
+
+# Optional: only used to print browse URLs in the report.
+jira:
+  base_url: https://jira.example.com
+
+# Вход скилла — ключ release Story (CLI / пользователь), не этот блок.
+
+# Состав релиза: те же Story, что у sdd-auto-story-to-uat
+stories:
+  issue_type: Story
+  via: both              # parent | linked | both
+  # link_type: Relates
+  # project: DEV
+
+# Номер релиза и имя ветки — как у sdd-auto-story-to-uat
+release:
+  # number: "1.2"
+  # number_field: fixVersions
+  number_pattern: '(\d+(?:\.\d+)*)'
+  branch_pattern: "release/{number}"
+
+# Репозитории компонентов. Имя = Jira Component (sdd-auto-impr-to-story).
+# Один компонент — тот же блок, что у impr-to-story:
+component:
+  name: backend
+  repository: https://bitbucket.org/workspace/payments.git
+  default_branch: master
+  story_branch_pattern: "feature/{key}"
+
+# Несколько компонентов:
+# components:
+#   - name: backend
+#     repository: https://bitbucket.org/workspace/payments.git
+#     default_branch: master
+#     story_branch_pattern: "feature/{key}"
+#   - name: ui
+#     repository: https://bitbucket.org/workspace/ui.git
+#     default_branch: master
+#     story_branch_pattern: "feature/{key}"
+
+# Fallback имени Component, если у Story поле пустое (impr-to-story).
+related:
+  component: backend
+
+limits:
+  max_stories: 100
