@@ -6,6 +6,8 @@ Skill для [GigaCode](https://gitverse.ru/docs/ai/ai-assistant-gigacode/gigaco
 
 Jira уже должна быть подключена к агенту как MCP. Skill не ходит в REST и не хранит токены.
 
+Настройки — общий `settings.yaml` оркестратора `sdd-auto-impr-to-release` (секция `sdd-auto-story-to-ift`). Обмен с другими скиллами — `storage.yaml` (`--storage`).
+
 1. Ищет Story по пространству, типу, метке и статусу из `settings.yaml`
 2. Для каждой найденной собирает дочерние задачи типов из `children.issue_type`
 3. Если **все** такие дети в ready-статусе (`Готов` по умолчанию) — переводит Story в `target.statuses` (`Ready for IFT` по умолчанию)

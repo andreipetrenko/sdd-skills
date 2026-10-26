@@ -1,6 +1,6 @@
 # settings.yaml
 
-Путь по умолчанию: `settings.yaml` в корне репозитория. Переопределение: `--settings PATH`.
+Общий файл оркестратора `sdd-auto-impr-to-release`. Этот скилл читает верхний уровень и секцию `sdd-auto-story-to-ift` (`source`, `children`, `target`). Переопределение: `--settings PATH`. `--storage` — общий `storage.yaml`.
 
 Токены и URL MCP в YAML не клади. Jira ходит через уже подключённый MCP.
 

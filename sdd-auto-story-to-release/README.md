@@ -6,6 +6,8 @@ Skill для [GigaCode](https://gitverse.ru/docs/ai/ai-assistant-gigacode/gigaco
 
 Jira и Bitbucket уже должны быть подключены к агенту как MCP. Skill не ходит в REST и не хранит токены.
 
+Настройки — общий `settings.yaml` оркестратора `sdd-auto-impr-to-release`. Ключ release Story — CLI или `storage.sdd-auto-story-to-release.release_key`.
+
 1. Принимает ключ release Story (вход пользователя, не JQL-поиск релиза)
 2. Ищет дочерние/связанные Story так же, как `sdd-auto-story-to-uat`
 3. Берёт Jira Component каждой Story так же, как `sdd-auto-impr-to-story`

@@ -1,0 +1,8 @@
+# Shared storage owned by sdd-auto-impr-to-release.
+# Atomic skills read and write only their own section.
+# Do not put tokens here.
+
+sdd-auto-impr-to-story: {}
+sdd-auto-story-to-ift: {}
+sdd-auto-story-to-uat: {}
+sdd-auto-story-to-release: {}

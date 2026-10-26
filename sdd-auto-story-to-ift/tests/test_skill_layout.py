@@ -29,6 +29,7 @@ def test_example_settings_parse():
     settings = parse_settings(data)
     assert settings.source.project == "DEV"
     assert settings.source.issue_type == "Story"
+    assert "sdd-auto-story-to-uat" in data
     assert "Task" in settings.children.issue_types
     assert "Sub-task" in settings.children.issue_types
     assert "Готов" in settings.children.ready_statuses

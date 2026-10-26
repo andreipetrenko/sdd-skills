@@ -5,6 +5,21 @@ import pytest
 from sdd_auto_impr_to_story.settings import SettingsError, parse_settings
 
 
+def test_shared_example_uses_skill_section():
+    from pathlib import Path
+
+    import yaml
+
+    data = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "settings.example.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    settings = parse_settings(data)
+    assert settings.source.project == "IMPR"
+    assert settings.story.project == "DEV"
+
+
 def test_jql_and_branch_patterns(settings):
     assert (
         settings.source.jql()

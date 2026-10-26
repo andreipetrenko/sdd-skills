@@ -11,6 +11,19 @@ class SettingsError(ValueError):
     pass
 
 
+SKILL_NAME = "sdd-auto-story-to-ift"
+ORCHESTRATOR_SKILL = "sdd-auto-impr-to-release"
+SKILL_SECTIONS = frozenset(
+    {
+        "sdd-auto-impr-to-story",
+        "sdd-auto-story-to-ift",
+        "sdd-auto-story-to-uat",
+        "sdd-auto-story-to-release",
+        "sdd-auto-impr-to-release",
+    }
+)
+
+
 DEFAULT_CHILD_ISSUE_TYPES = ("Task", "Sub-task", "Subtask")
 DEFAULT_CHILD_READY_STATUSES = ("Готов",)
 DEFAULT_STORY_TARGET_STATUSES = ("Ready for IFT",)
@@ -78,7 +91,37 @@ def load_settings(path: str | Path) -> Settings:
     return parse_settings(data, path=settings_path)
 
 
+def slice_settings(data: dict[str, Any], skill: str = SKILL_NAME) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    merged = {key: value for key, value in data.items() if key not in SKILL_SECTIONS}
+    section = data.get(skill)
+    if isinstance(section, dict):
+        merged.update(section)
+    return merged
+
+
+def storage_path_from_data(
+    data: dict[str, Any],
+    *,
+    settings_path: Path | None = None,
+) -> Path | None:
+    raw = data.get("storage")
+    value: Any = None
+    if isinstance(raw, str):
+        value = raw
+    elif isinstance(raw, dict):
+        value = raw.get("path")
+    if not value:
+        return None
+    path = Path(str(value)).expanduser()
+    if not path.is_absolute() and settings_path is not None:
+        path = settings_path.parent / path
+    return path.resolve()
+
+
 def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
+    data = slice_settings(data)
     jira = data.get("jira") or {}
     base_url = str(jira.get("base_url") or "").strip() or None
 
@@ -111,21 +154,29 @@ def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
 def find_settings_file(explicit: str | Path | None = None) -> Path:
     if explicit:
         return Path(explicit).expanduser().resolve()
+    cwd = Path.cwd()
     candidates = [
-        Path.cwd() / "settings.yaml",
-        Path.cwd() / "sdd-auto-story-to-ift" / "settings.yaml",
-        Path.cwd() / ".gigacode/skills/sdd-auto-story-to-ift/settings.yaml",
-        Path.cwd() / ".gigacode_vsc/skills/sdd-auto-story-to-ift/settings.yaml",
-        Path.cwd() / "assets" / "settings.example.yaml",
-        Path.cwd() / "sdd-auto-story-to-ift" / "assets" / "settings.example.yaml",
-        Path.cwd() / ".gigacode/skills/sdd-auto-story-to-ift/assets/settings.example.yaml",
+        cwd / "settings.yaml",
+        cwd / ORCHESTRATOR_SKILL / "settings.yaml",
+        cwd / ".gigacode/skills" / ORCHESTRATOR_SKILL / "settings.yaml",
+        cwd / ".gigacode_vsc/skills" / ORCHESTRATOR_SKILL / "settings.yaml",
+        cwd / SKILL_NAME / "settings.yaml",
+        cwd / ".gigacode/skills" / SKILL_NAME / "settings.yaml",
+        cwd / ".gigacode_vsc/skills" / SKILL_NAME / "settings.yaml",
+        cwd / "assets" / "settings.example.yaml",
+        cwd / ORCHESTRATOR_SKILL / "settings.example.yaml",
+        cwd / ORCHESTRATOR_SKILL / "assets" / "settings.example.yaml",
+        cwd / SKILL_NAME / "settings.example.yaml",
+        cwd / SKILL_NAME / "assets" / "settings.example.yaml",
+        cwd / ".gigacode/skills" / ORCHESTRATOR_SKILL / "assets/settings.example.yaml",
+        cwd / ".gigacode/skills" / SKILL_NAME / "assets/settings.example.yaml",
     ]
     for candidate in candidates:
         if candidate.is_file():
             return candidate
     raise SettingsError(
-        "settings.yaml not found. Copy settings.example.yaml to settings.yaml "
-        "or pass --settings."
+        "settings.yaml not found. Copy the shared settings.example.yaml "
+        f"from {ORCHESTRATOR_SKILL} to settings.yaml or pass --settings."
     )
 
 

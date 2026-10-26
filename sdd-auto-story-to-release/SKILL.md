@@ -16,7 +16,7 @@ description: >-
 
 MCP Jira и MCP Bitbucket **уже подключены**. Не спрашивай токены. Не вызывай REST Jira/Bitbucket. Не пиши `curl` к `/rest/api`. Если нужного MCP-инструмента нет — остановись и назови недостающее действие.
 
-Параметры только из `settings.yaml` и **ключа release Story**, который дал пользователь. Схема: `references/settings.md`. MCP: `references/mcp.md`.
+Параметры только из общего `settings.yaml` оркестратора `sdd-auto-impr-to-release` (общие блоки `stories` / `release` / `component`) и **ключа release Story** (пользователь, CLI или `storage.sdd-auto-story-to-release.release_key`). Схема: `references/settings.md`. MCP: `references/mcp.md`. Между скиллами данные — в общем `storage.yaml` (`--storage`).
 
 Локальный CLI — JQL состава, номер релиза, план веток/PR. Запись в Bitbucket — только MCP. Этот скилл **не** меняет статусы Jira.
 
