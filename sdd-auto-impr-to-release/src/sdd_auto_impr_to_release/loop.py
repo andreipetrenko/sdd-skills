@@ -6,15 +6,37 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from sdd_auto_impr_to_release.settings import ATOMIC_SKILLS, Settings, SettingsError
+from sdd_auto_impr_to_release.settings import (
+    ORCHESTRATOR_SKILL,
+    Settings,
+    SettingsError,
+    SkillRef,
+)
 from sdd_auto_impr_to_release.storage import put_section
 
 
 DEFAULT_SKILL_COMMAND = "plan"
 
 
-def skill_script(skill: str, *, start: Path) -> Path:
-    """Resolve sibling skill script from catalog root or .gigacode/skills/."""
+def skill_script(
+    skill: str | SkillRef,
+    *,
+    start: Path,
+    settings_path: Path | None = None,
+) -> Path:
+    """Resolve a skill's scripts/run.py by catalog id or explicit path."""
+    ref = skill if isinstance(skill, SkillRef) else SkillRef(id=skill)
+    if ref.path:
+        found = _script_from_given_path(ref.path, start=start, settings_path=settings_path)
+        if found:
+            return found
+        raise SettingsError(
+            f"atomic skill script not found for {ref.id}: {ref.path}"
+        )
+    return _script_by_id(ref.id, start=start)
+
+
+def _script_by_id(skill: str, *, start: Path) -> Path:
     bases = [start, start.parent]
     if start.name == skill:
         bases.append(start.parent)
@@ -36,22 +58,61 @@ def skill_script(skill: str, *, start: Path) -> Path:
     )
 
 
+def _script_from_given_path(
+    raw: str,
+    *,
+    start: Path,
+    settings_path: Path | None,
+) -> Path | None:
+    path = Path(raw).expanduser()
+    candidates: list[Path] = []
+    if path.is_absolute():
+        candidates.append(path)
+    else:
+        if settings_path:
+            candidates.append(Path(settings_path).parent / path)
+        candidates.append(start / path)
+        candidates.append(start.parent / path)
+    for candidate in candidates:
+        found = _as_run_script(candidate)
+        if found:
+            return found
+    return None
+
+
+def _as_run_script(path: Path) -> Path | None:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return None
+    if resolved.is_file():
+        return resolved
+    script = resolved / "scripts" / "run.py"
+    if script.is_file():
+        return script
+    return None
+
+
 def build_plan(settings: Settings) -> dict[str, Any]:
     return {
-        "orchestrator": "sdd-auto-impr-to-release",
+        "orchestrator": ORCHESTRATOR_SKILL,
         "loop": {
             "rule": (
-                "Run the atomic skills in order, then repeat. "
+                "Run the skills listed in settings.skills, in that order, then repeat. "
                 "No stop-condition and no schedule."
             ),
         },
         "settings": str(settings.path) if settings.path else None,
         "storage": str(settings.storage_path) if settings.storage_path else None,
+        "skills": [
+            {"id": item.id, "path": item.path}
+            for item in settings.skills
+        ],
         "atomic_skills": list(settings.atomic_skills),
         "skill_command": DEFAULT_SKILL_COMMAND,
         "steps": [
-            f"{index}. {name}"
-            for index, name in enumerate(settings.atomic_skills, start=1)
+            f"{index}. {item.id}"
+            for index, item in enumerate(settings.skills, start=1)
         ],
     }
 
@@ -65,21 +126,21 @@ def run_once(
 ) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     settings_arg = str(settings.path) if settings.path else None
-    for skill in settings.atomic_skills:
-        script = skill_script(skill, start=start)
+    for ref in settings.skills:
+        script = skill_script(ref, start=start, settings_path=settings.path)
         argv = [sys.executable, str(script)]
         if settings_arg:
             argv.extend(["--settings", settings_arg])
         argv.extend(["--storage", str(storage_path), skill_command])
         proc = subprocess.run(argv, capture_output=True, text=True, check=False)
-        output: Any
         stdout = proc.stdout or ""
         try:
-            output = json.loads(stdout) if stdout.strip() else None
+            output: Any = json.loads(stdout) if stdout.strip() else None
         except json.JSONDecodeError:
             output = stdout
         record = {
-            "skill": skill,
+            "skill": ref.id,
+            "path": ref.path,
             "command": skill_command,
             "argv": argv[1:],
             "exit_code": proc.returncode,
@@ -89,7 +150,7 @@ def run_once(
             record["stderr"] = proc.stderr
         put_section(
             storage_path,
-            skill,
+            ref.id,
             {
                 "command": skill_command,
                 "exit_code": proc.returncode,
@@ -100,7 +161,7 @@ def run_once(
     summary = {"iteration": results}
     put_section(
         storage_path,
-        "sdd-auto-impr-to-release",
+        ORCHESTRATOR_SKILL,
         {"command": "once", "output": {"skills": [item["skill"] for item in results]}},
     )
     return summary

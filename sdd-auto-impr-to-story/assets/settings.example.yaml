@@ -91,6 +91,15 @@ limits:
 storage:
   path: storage.yaml
 
+# Catalog: attach any number of skills. Order = loop order.
+# Item = skill id, path to the skill dir / scripts/run.py, or {id, path}.
+# Add or remove a skill here — not in orchestrator code.
+skills:
+  - sdd-auto-impr-to-story
+  - sdd-auto-story-to-ift
+  - sdd-auto-story-to-uat
+  - sdd-auto-story-to-release
+
 # --- skill sections: keys that would otherwise collide ---
 
 sdd-auto-impr-to-story:

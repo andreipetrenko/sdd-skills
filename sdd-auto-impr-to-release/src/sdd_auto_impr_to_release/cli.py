@@ -80,9 +80,9 @@ def build_parser():
     parser = argparse.ArgumentParser(
         prog="sdd-auto-impr-to-release",
         description=(
-            "Оркестратор атомарных скиллов каталога: общий settings.yaml и storage.yaml. "
-            "В цикле запускает существующие scripts/run.py. "
-            "Запись в Jira/Bitbucket — только внутри атомарных скиллов через MCP."
+            "Оркестратор: общий settings.yaml и storage.yaml. "
+            "В цикле запускает scripts/run.py скиллов из settings.skills. "
+            "Запись в Jira/Bitbucket — только внутри подключённых скиллов через MCP."
         ),
     )
     parser.add_argument("--settings", help="Path to shared settings.yaml")
@@ -92,7 +92,7 @@ def build_parser():
     sub.add_parser("plan", help="Печатает порядок атомарных скиллов и пути settings/storage")
     sub.add_parser("storage", help="Печатает текущий shared storage.yaml")
 
-    once = sub.add_parser("once", help="Одна итерация: атомарные скиллы по порядку каталога")
+    once = sub.add_parser("once", help="Одна итерация: скиллы из settings.skills")
     once.add_argument(
         "--skill-command",
         default="plan",

@@ -8,7 +8,7 @@
 | [`sdd-auto-story-to-ift`](sdd-auto-story-to-ift/) | Story → Ready for IFT, если все дочерние Task/Sub-task в статусе «Готов» |
 | [`sdd-auto-story-to-uat`](sdd-auto-story-to-uat/) | Story релиза → Ready for UAT, если все PR влиты в `release/<номер>` |
 | [`sdd-auto-story-to-release`](sdd-auto-story-to-release/) | Release Story → состав → `release/<номер>` по компонентам и PR каждой Story |
-| [`sdd-auto-impr-to-release`](sdd-auto-impr-to-release/) | Оркестратор: цикл атомарных скиллов, общий `settings.yaml` и `storage.yaml` |
+| [`sdd-auto-impr-to-release`](sdd-auto-impr-to-release/) | Оркестратор: цикл скиллов из `settings.skills`, общий `settings.yaml` и `storage.yaml` |
 
 Промпты для воспроизведения в другой сессии:
 

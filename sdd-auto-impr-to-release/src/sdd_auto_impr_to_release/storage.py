@@ -6,15 +6,14 @@ from typing import Any
 import yaml
 
 from sdd_auto_impr_to_release.settings import (
-    ATOMIC_SKILLS,
     ORCHESTRATOR_SKILL,
     SettingsError,
     storage_path_from_data,
 )
 
 
-def empty_storage() -> dict[str, Any]:
-    return {name: {} for name in ATOMIC_SKILLS}
+def empty_storage(skill_ids: tuple[str, ...] = ()) -> dict[str, Any]:
+    return {name: {} for name in skill_ids}
 
 
 def load_storage(path: str | Path, *, create: bool = False) -> dict[str, Any]:

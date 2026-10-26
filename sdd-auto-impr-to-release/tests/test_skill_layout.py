@@ -15,7 +15,7 @@ def test_gigacode_skill_frontmatter():
     meta = yaml.safe_load(frontmatter)
     assert meta["name"] == "sdd-auto-impr-to-release"
     assert "оркестратор" in meta["description"].lower() or "Оркестратор" in meta["description"]
-    assert "sdd-auto-impr-to-story" in meta["description"]
+    assert "settings.skills" in meta["description"] or "skills" in meta["description"]
     assert "не вызывай REST" in body.lower() or "Не вызывай REST" in body
     assert (ROOT / "references" / "mcp.md").is_file()
     assert (ROOT / "references" / "settings.md").is_file()

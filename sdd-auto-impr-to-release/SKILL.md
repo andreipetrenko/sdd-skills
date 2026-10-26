@@ -1,10 +1,9 @@
 ---
 name: sdd-auto-impr-to-release
 description: >-
-  Оркестратор атомарных скиллов каталога: в цикле запускает
-  sdd-auto-impr-to-story, sdd-auto-story-to-ift, sdd-auto-story-to-uat,
-  sdd-auto-story-to-release. Владеет общим settings.yaml и storage.yaml.
-  Jira и Bitbucket только через MCP атомарных скиллов. Используй при
+  Оркестратор: в цикле запускает скиллы из каталога settings.skills
+  (id или path). Владеет общим settings.yaml и storage.yaml.
+  Jira и Bitbucket только через MCP подключённых скиллов. Используй при
   sdd-auto-impr-to-release, оркестратор SDD, цикл скиллов.
 ---
 
@@ -34,33 +33,33 @@ python .gigacode/skills/sdd-auto-impr-to-release/scripts/run.py --settings setti
 
 1. Есть общий `settings.yaml` (скопируй `assets/settings.example.yaml`, если файла нет). Если найден только example — не пиши в Jira/Bitbucket, попроси заполнить значения.
 2. Есть общий `storage.yaml` (скопируй `storage.example.yaml` или дай `--storage`). Атомарные скиллы читают и пишут свои секции.
-3. Атомарные скиллы лежат рядом: `sdd-auto-impr-to-story`, `sdd-auto-story-to-ift`, `sdd-auto-story-to-uat`, `sdd-auto-story-to-release`.
-4. Перед живой записью каждый атомарный скилл показывает свой план. Если пользователь не подтвердил — остановись после плана.
+3. Скиллы из `settings.skills` лежат рядом (по id) или по указанному `path`.
+4. Перед живой записью каждый подключённый скилл показывает свой план. Если пользователь не подтвердил — остановись после плана.
 
 ## Цикл
 
-Порядок — как в каталоге репозитория (порядок появления скиллов):
+Порядок — список `skills` в общем `settings.yaml`. Пример в `settings.example.yaml`:
 
 ```
 loop:
-    sdd-auto-impr-to-story
-    sdd-auto-story-to-ift
-    sdd-auto-story-to-uat
-    sdd-auto-story-to-release
+    for skill in settings.skills:
+        run skill
     → снова с первого
 ```
 
-1. Не добавляй шаги, которых нет в каталоге.
+1. Не добавляй шаги, которых нет в `settings.skills`.
 2. Не выдумывай условие остановки цикла и не ставь расписание / sleep.
 3. Цикл продолжается, пока пользователь не остановит.
-4. На каждой итерации запускай атомарный скилл целиком по его `SKILL.md`. Локальный `once` вызывает существующую команду `plan` каждого `scripts/run.py`.
-5. Всем атомарным скиллам передавай **один** `--settings` (этот файл) и **один** `--storage`.
-6. `sdd-auto-story-to-release` по-прежнему ждёт ключ release Story (пользователь, CLI или `storage.sdd-auto-story-to-release.release_key`). Не подставляй ключ release-задачи из `sdd-auto-story-to-uat`, если в storage его секции нет.
+4. На каждой итерации запускай скилл целиком по его `SKILL.md`. Локальный `once` вызывает существующую команду `plan` каждого `scripts/run.py`.
+5. Всем скиллам передавай **один** `--settings` (этот файл) и **один** `--storage`.
+6. `sdd-auto-story-to-release`, если он в каталоге, по-прежнему ждёт ключ release Story (пользователь, CLI или `storage.sdd-auto-story-to-release.release_key`). Не подставляй ключ release-задачи из `sdd-auto-story-to-uat`, если в storage его секции нет.
+
+Добавить пятый скилл: строка в `skills` (id или path) и при необходимости секция с его именем. Убрать скилл: удалить строку из `skills`. Код оркестратора не меняй.
 
 ## Settings и storage
 
-- Settings: `settings.yaml` оркестратора. Атомарные скиллы больше не держат отдельную схему: общий файл + секция с именем скилла для конфликтующих ключей (`source`, `target`).
-- Storage: YAML-словарь, ключ = имя скилла. Скилл пишет результат своей команды в свою секцию и может читать чужие.
+- Settings: `settings.yaml` оркестратора. Каталог — `skills`. Подключённые скиллы читают общий файл + секцию с именем скилла для конфликтующих ключей (`source`, `target`).
+- Storage: YAML-словарь, ключ = id скилла из каталога. Скилл пишет результат своей команды в свою секцию и может читать чужие.
 
 ## Отчёт
 

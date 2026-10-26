@@ -13,23 +13,25 @@ class SettingsError(ValueError):
 
 ORCHESTRATOR_SKILL = "sdd-auto-impr-to-release"
 
-# Catalog / addition order of atomic skills in this repo.
-ATOMIC_SKILLS = (
-    "sdd-auto-impr-to-story",
-    "sdd-auto-story-to-ift",
-    "sdd-auto-story-to-uat",
-    "sdd-auto-story-to-release",
-)
 
-SKILL_SECTIONS = frozenset(ATOMIC_SKILLS) | {ORCHESTRATOR_SKILL}
+@dataclass(frozen=True)
+class SkillRef:
+    """One attached skill: id (storage/section key) and optional path to the skill dir or run.py."""
+
+    id: str
+    path: str | None = None
 
 
 @dataclass(frozen=True)
 class Settings:
     data: dict[str, Any]
+    skills: tuple[SkillRef, ...]
     storage_path: Path | None
     path: Path | None = None
-    atomic_skills: tuple[str, ...] = ATOMIC_SKILLS
+
+    @property
+    def atomic_skills(self) -> tuple[str, ...]:
+        return tuple(item.id for item in self.skills)
 
     def section(self, skill: str) -> dict[str, Any]:
         raw = self.data.get(skill)
@@ -47,15 +49,69 @@ def load_settings(path: str | Path) -> Settings:
 
 
 def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
+    if "skills" not in data and "skill" not in data:
+        raise SettingsError(
+            "skills (каталог id или path подключаемых скиллов) is required"
+        )
+    skills = parse_skill_catalog(data.get("skills") if "skills" in data else data.get("skill"))
     storage = storage_path_from_data(data, settings_path=path)
-    return Settings(data=data, storage_path=storage, path=path)
+    return Settings(data=data, skills=skills, storage_path=storage, path=path)
+
+
+def parse_skill_catalog(raw: Any) -> tuple[SkillRef, ...]:
+    if raw is None:
+        return ()
+    if isinstance(raw, (str, dict)):
+        items = [raw]
+    elif isinstance(raw, list):
+        items = raw
+    else:
+        raise SettingsError("skills must be a list of skill ids or paths")
+    refs: list[SkillRef] = []
+    for item in items:
+        ref = parse_skill_ref(item)
+        if ref:
+            refs.append(ref)
+    return tuple(refs)
+
+
+def parse_skill_ref(raw: Any) -> SkillRef | None:
+    if isinstance(raw, str):
+        text = raw.strip()
+        if not text:
+            return None
+        if _looks_like_path(text):
+            return SkillRef(id=_id_from_path(text), path=text)
+        return SkillRef(id=text, path=None)
+    if not isinstance(raw, dict):
+        raise SettingsError("skills[] item must be an id string, a path, or {id, path}")
+    path_raw = raw.get("path") or raw.get("dir")
+    ident = raw.get("id") or raw.get("name") or raw.get("skill")
+    path = str(path_raw).strip() if path_raw else None
+    if ident:
+        return SkillRef(id=str(ident).strip(), path=path or None)
+    if path:
+        return SkillRef(id=_id_from_path(path), path=path)
+    raise SettingsError("skills[] needs id or path")
+
+
+def catalog_section_names(data: dict[str, Any]) -> set[str]:
+    names = {ORCHESTRATOR_SKILL}
+    raw = data.get("skills") if "skills" in data else data.get("skill")
+    try:
+        for ref in parse_skill_catalog(raw):
+            names.add(ref.id)
+    except SettingsError:
+        return names
+    return names
 
 
 def slice_settings(data: dict[str, Any], skill: str) -> dict[str, Any]:
-    """Shared keys plus the named skill section. Other skill sections are dropped."""
+    """Shared keys plus the named skill section. Other catalog skill sections are dropped."""
     if not isinstance(data, dict):
         return {}
-    merged = {key: value for key, value in data.items() if key not in SKILL_SECTIONS}
+    drop = catalog_section_names(data) | {skill}
+    merged = {key: value for key, value in data.items() if key not in drop}
     section = data.get(skill)
     if isinstance(section, dict):
         merged.update(section)
@@ -102,3 +158,17 @@ def find_settings_file(explicit: str | Path | None = None) -> Path:
         "settings.yaml not found. Copy settings.example.yaml to settings.yaml "
         "or pass --settings."
     )
+
+
+def _looks_like_path(text: str) -> bool:
+    return text.startswith(".") or text.startswith("/") or "/" in text or text.endswith(".py")
+
+
+def _id_from_path(text: str) -> str:
+    path = Path(text.rstrip("/"))
+    name = path.name
+    if name == "run.py":
+        return path.parent.parent.name
+    if name == "scripts":
+        return path.parent.name
+    return name

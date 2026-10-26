@@ -13,15 +13,6 @@ class SettingsError(ValueError):
 
 SKILL_NAME = "sdd-auto-story-to-ift"
 ORCHESTRATOR_SKILL = "sdd-auto-impr-to-release"
-SKILL_SECTIONS = frozenset(
-    {
-        "sdd-auto-impr-to-story",
-        "sdd-auto-story-to-ift",
-        "sdd-auto-story-to-uat",
-        "sdd-auto-story-to-release",
-        "sdd-auto-impr-to-release",
-    }
-)
 
 
 DEFAULT_CHILD_ISSUE_TYPES = ("Task", "Sub-task", "Subtask")
@@ -91,10 +82,50 @@ def load_settings(path: str | Path) -> Settings:
     return parse_settings(data, path=settings_path)
 
 
+def catalog_section_names(data: dict[str, Any]) -> set[str]:
+    names = {ORCHESTRATOR_SKILL, SKILL_NAME}
+    if not isinstance(data, dict):
+        return names
+    raw = data.get("skills") if "skills" in data else data.get("skill")
+    if raw is None:
+        return names
+    items = [raw] if isinstance(raw, (str, dict)) else raw if isinstance(raw, list) else []
+    for item in items:
+        ident = _catalog_id(item)
+        if ident:
+            names.add(ident)
+    return names
+
+
+def _catalog_id(raw: Any) -> str | None:
+    if isinstance(raw, str):
+        text = raw.strip()
+        if not text:
+            return None
+        if text.startswith(".") or text.startswith("/") or "/" in text or text.endswith(".py"):
+            path = Path(text.rstrip("/"))
+            name = path.name
+            if name == "run.py":
+                return path.parent.parent.name
+            if name == "scripts":
+                return path.parent.name
+            return name
+        return text
+    if isinstance(raw, dict):
+        ident = raw.get("id") or raw.get("name") or raw.get("skill")
+        if ident:
+            return str(ident).strip()
+        path = raw.get("path") or raw.get("dir")
+        if path:
+            return _catalog_id(str(path))
+    return None
+
+
 def slice_settings(data: dict[str, Any], skill: str = SKILL_NAME) -> dict[str, Any]:
     if not isinstance(data, dict):
         return {}
-    merged = {key: value for key, value in data.items() if key not in SKILL_SECTIONS}
+    drop = catalog_section_names(data) | {skill}
+    merged = {key: value for key, value in data.items() if key not in drop}
     section = data.get(skill)
     if isinstance(section, dict):
         merged.update(section)
