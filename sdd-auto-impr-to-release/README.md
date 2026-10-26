@@ -6,14 +6,14 @@ Skill-оркестратор для [GigaCode](https://gitverse.ru/docs/ai/ai-as
 
 Владеет общим `settings.yaml` и `storage.yaml`. Подключённые скиллы их читают. Jira и Bitbucket по-прежнему только через MCP внутри этих скиллов.
 
-Порядок в цикле — список `skills` в settings (id или path). В примере каталога:
+`settings.skills` — имена атомарных скиллов, не pipeline. В примере:
 
-1. `sdd-auto-impr-to-story`
-2. `sdd-auto-story-to-ift`
-3. `sdd-auto-story-to-uat`
-4. `sdd-auto-story-to-release`
+- `sdd-auto-impr-to-story`
+- `sdd-auto-story-to-ift`
+- `sdd-auto-story-to-uat`
+- `sdd-auto-story-to-release`
 
-Добавление или удаление скилла — правка `skills`, не кода. Условия остановки и расписание оркестратор не задаёт.
+Имя резолвится в `<имя>/scripts/run.py` рядом с оркестратором. Добавление или удаление — правка `skills`, не кода. Условия остановки и расписание оркестратор не задаёт.
 
 ## Быстрый старт
 
@@ -53,7 +53,7 @@ python scripts/run.py --settings settings.yaml plan
 
 ## settings.yaml
 
-Один файл на все скиллы. Каталог — `skills` (id или path). Общие блоки на верхнем уровне. Конфликтующие ключи (`source`, `target`) — в секции с именем скилла. Разбор: `references/settings.md`. Storage: `references/storage.md`.
+Один файл на все скиллы. `skills` — список имён. Общие блоки на верхнем уровне. Конфликтующие ключи (`source`, `target`) — в секции с именем скилла. Разбор: `references/settings.md`. Storage: `references/storage.md`.
 
 ## Тесты
 

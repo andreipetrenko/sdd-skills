@@ -91,8 +91,8 @@ limits:
 storage:
   path: storage.yaml
 
-# Catalog: attach any number of skills. Order = loop order.
-# Item = skill id, path to the skill dir / scripts/run.py, or {id, path}.
+# Attached atomic skills: names only. Not a pipeline order.
+# Each name resolves to <name>/scripts/run.py next to this skill.
 # Add or remove a skill here — not in orchestrator code.
 skills:
   - sdd-auto-impr-to-story

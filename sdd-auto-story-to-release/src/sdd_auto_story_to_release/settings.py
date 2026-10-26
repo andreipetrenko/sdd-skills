@@ -116,7 +116,7 @@ def catalog_section_names(data: dict[str, Any]) -> set[str]:
     raw = data.get("skills") if "skills" in data else data.get("skill")
     if raw is None:
         return names
-    items = [raw] if isinstance(raw, (str, dict)) else raw if isinstance(raw, list) else []
+    items = [raw] if isinstance(raw, str) else raw if isinstance(raw, list) else []
     for item in items:
         ident = _catalog_id(item)
         if ident:
@@ -125,27 +125,12 @@ def catalog_section_names(data: dict[str, Any]) -> set[str]:
 
 
 def _catalog_id(raw: Any) -> str | None:
-    if isinstance(raw, str):
-        text = raw.strip()
-        if not text:
-            return None
-        if text.startswith(".") or text.startswith("/") or "/" in text or text.endswith(".py"):
-            path = Path(text.rstrip("/"))
-            name = path.name
-            if name == "run.py":
-                return path.parent.parent.name
-            if name == "scripts":
-                return path.parent.name
-            return name
-        return text
-    if isinstance(raw, dict):
-        ident = raw.get("id") or raw.get("name") or raw.get("skill")
-        if ident:
-            return str(ident).strip()
-        path = raw.get("path") or raw.get("dir")
-        if path:
-            return _catalog_id(str(path))
-    return None
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    if not text or text.startswith(".") or text.startswith("/") or "/" in text or text.endswith(".py"):
+        return None
+    return text
 
 
 def slice_settings(data: dict[str, Any], skill: str = SKILL_NAME) -> dict[str, Any]:

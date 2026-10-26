@@ -9,8 +9,13 @@ from sdd_auto_impr_to_release.cli import main
 def test_plan(settings_file: Path, capsys):
     assert main(["--settings", str(settings_file), "plan"]) == 0
     plan = json.loads(capsys.readouterr().out)
-    assert plan["atomic_skills"][0] == "sdd-auto-impr-to-story"
-    assert plan["atomic_skills"][-1] == "sdd-auto-story-to-release"
+    assert set(plan["skills"]) == {
+        "sdd-auto-impr-to-story",
+        "sdd-auto-story-to-ift",
+        "sdd-auto-story-to-uat",
+        "sdd-auto-story-to-release",
+    }
+    assert "not a pipeline" in plan["loop"]["rule"]
 
 
 def test_once(settings_file: Path, tmp_path: Path, capsys):

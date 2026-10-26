@@ -89,7 +89,7 @@ def build_parser():
     parser.add_argument("--storage", help="Path to shared storage.yaml")
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("plan", help="Печатает порядок атомарных скиллов и пути settings/storage")
+    sub.add_parser("plan", help="Печатает имена подключённых скиллов и пути settings/storage")
     sub.add_parser("storage", help="Печатает текущий shared storage.yaml")
 
     once = sub.add_parser("once", help="Одна итерация: скиллы из settings.skills")

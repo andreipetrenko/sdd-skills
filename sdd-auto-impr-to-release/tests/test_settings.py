@@ -8,7 +8,7 @@ import yaml
 from sdd_auto_impr_to_release.settings import (
     SettingsError,
     parse_settings,
-    parse_skill_catalog,
+    parse_skill_names,
     slice_settings,
 )
 
@@ -26,8 +26,7 @@ EXAMPLE_IDS = (
 def test_example_settings_parse():
     data = yaml.safe_load((ROOT / "settings.example.yaml").read_text(encoding="utf-8"))
     settings = parse_settings(data)
-    assert settings.atomic_skills == EXAMPLE_IDS
-    assert [item.path for item in settings.skills] == [None, None, None, None]
+    assert settings.skills == EXAMPLE_IDS
     assert settings.storage_path is not None
     assert settings.storage_path.name == "storage.yaml"
     assert settings.section("sdd-auto-story-to-ift")["source"]["project"] == "DEV"
@@ -39,20 +38,15 @@ def test_skills_required():
         parse_settings({"jira": {"base_url": "https://jira.example.com"}})
 
 
-def test_skills_from_ids_and_paths():
-    refs = parse_skill_catalog(
-        [
-            "sdd-auto-impr-to-story",
-            "../sdd-auto-foo",
-            {"id": "bar", "path": "./bar/scripts/run.py"},
-        ]
+def test_skills_are_names_only():
+    assert parse_skill_names(["sdd-auto-impr-to-story", "sdd-auto-story-to-ift"]) == (
+        "sdd-auto-impr-to-story",
+        "sdd-auto-story-to-ift",
     )
-    assert refs[0].id == "sdd-auto-impr-to-story"
-    assert refs[0].path is None
-    assert refs[1].id == "sdd-auto-foo"
-    assert refs[1].path == "../sdd-auto-foo"
-    assert refs[2].id == "bar"
-    assert refs[2].path == "./bar/scripts/run.py"
+    with pytest.raises(SettingsError, match="name"):
+        parse_skill_names(["../sdd-auto-foo"])
+    with pytest.raises(SettingsError, match="name"):
+        parse_skill_names([{"id": "bar", "path": "./bar"}])
 
 
 def test_empty_skills_catalog():

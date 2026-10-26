@@ -15,23 +15,15 @@ ORCHESTRATOR_SKILL = "sdd-auto-impr-to-release"
 
 
 @dataclass(frozen=True)
-class SkillRef:
-    """One attached skill: id (storage/section key) and optional path to the skill dir or run.py."""
-
-    id: str
-    path: str | None = None
-
-
-@dataclass(frozen=True)
 class Settings:
     data: dict[str, Any]
-    skills: tuple[SkillRef, ...]
+    skills: tuple[str, ...]
     storage_path: Path | None
     path: Path | None = None
 
     @property
     def atomic_skills(self) -> tuple[str, ...]:
-        return tuple(item.id for item in self.skills)
+        return self.skills
 
     def section(self, skill: str) -> dict[str, Any]:
         raw = self.data.get(skill)
@@ -50,57 +42,47 @@ def load_settings(path: str | Path) -> Settings:
 
 def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
     if "skills" not in data and "skill" not in data:
-        raise SettingsError(
-            "skills (каталог id или path подключаемых скиллов) is required"
-        )
-    skills = parse_skill_catalog(data.get("skills") if "skills" in data else data.get("skill"))
+        raise SettingsError("skills (список имён скиллов) is required")
+    skills = parse_skill_names(data.get("skills") if "skills" in data else data.get("skill"))
     storage = storage_path_from_data(data, settings_path=path)
     return Settings(data=data, skills=skills, storage_path=storage, path=path)
 
 
-def parse_skill_catalog(raw: Any) -> tuple[SkillRef, ...]:
+def parse_skill_names(raw: Any) -> tuple[str, ...]:
     if raw is None:
         return ()
-    if isinstance(raw, (str, dict)):
+    if isinstance(raw, str):
         items = [raw]
     elif isinstance(raw, list):
         items = raw
     else:
-        raise SettingsError("skills must be a list of skill ids or paths")
-    refs: list[SkillRef] = []
+        raise SettingsError("skills must be a list of skill names")
+    names: list[str] = []
     for item in items:
-        ref = parse_skill_ref(item)
-        if ref:
-            refs.append(ref)
-    return tuple(refs)
+        name = parse_skill_name(item)
+        if name:
+            names.append(name)
+    return tuple(names)
 
 
-def parse_skill_ref(raw: Any) -> SkillRef | None:
-    if isinstance(raw, str):
-        text = raw.strip()
-        if not text:
-            return None
-        if _looks_like_path(text):
-            return SkillRef(id=_id_from_path(text), path=text)
-        return SkillRef(id=text, path=None)
-    if not isinstance(raw, dict):
-        raise SettingsError("skills[] item must be an id string, a path, or {id, path}")
-    path_raw = raw.get("path") or raw.get("dir")
-    ident = raw.get("id") or raw.get("name") or raw.get("skill")
-    path = str(path_raw).strip() if path_raw else None
-    if ident:
-        return SkillRef(id=str(ident).strip(), path=path or None)
-    if path:
-        return SkillRef(id=_id_from_path(path), path=path)
-    raise SettingsError("skills[] needs id or path")
+def parse_skill_name(raw: Any) -> str | None:
+    if isinstance(raw, dict):
+        raise SettingsError("skills[] must be a skill name, not {id, path}")
+    if not isinstance(raw, str):
+        raise SettingsError("skills[] must be a skill name")
+    text = raw.strip()
+    if not text:
+        return None
+    if _looks_like_path(text):
+        raise SettingsError("skills[] must be a skill name, not a path")
+    return text
 
 
 def catalog_section_names(data: dict[str, Any]) -> set[str]:
     names = {ORCHESTRATOR_SKILL}
     raw = data.get("skills") if "skills" in data else data.get("skill")
     try:
-        for ref in parse_skill_catalog(raw):
-            names.add(ref.id)
+        names.update(parse_skill_names(raw))
     except SettingsError:
         return names
     return names
@@ -162,13 +144,3 @@ def find_settings_file(explicit: str | Path | None = None) -> Path:
 
 def _looks_like_path(text: str) -> bool:
     return text.startswith(".") or text.startswith("/") or "/" in text or text.endswith(".py")
-
-
-def _id_from_path(text: str) -> str:
-    path = Path(text.rstrip("/"))
-    name = path.name
-    if name == "run.py":
-        return path.parent.parent.name
-    if name == "scripts":
-        return path.parent.name
-    return name

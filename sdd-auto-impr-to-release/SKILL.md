@@ -1,8 +1,8 @@
 ---
 name: sdd-auto-impr-to-release
 description: >-
-  Оркестратор: в цикле запускает скиллы из каталога settings.skills
-  (id или path). Владеет общим settings.yaml и storage.yaml.
+  Оркестратор: в цикле запускает атомарные скиллы по именам из
+  settings.skills. Владеет общим settings.yaml и storage.yaml.
   Jira и Bitbucket только через MCP подключённых скиллов. Используй при
   sdd-auto-impr-to-release, оркестратор SDD, цикл скиллов.
 ---
@@ -33,28 +33,27 @@ python .gigacode/skills/sdd-auto-impr-to-release/scripts/run.py --settings setti
 
 1. Есть общий `settings.yaml` (скопируй `assets/settings.example.yaml`, если файла нет). Если найден только example — не пиши в Jira/Bitbucket, попроси заполнить значения.
 2. Есть общий `storage.yaml` (скопируй `storage.example.yaml` или дай `--storage`). Атомарные скиллы читают и пишут свои секции.
-3. Скиллы из `settings.skills` лежат рядом (по id) или по указанному `path`.
+3. Имена из `settings.skills` резолвятся в соседний каталог `<имя>/scripts/run.py`.
 4. Перед живой записью каждый подключённый скилл показывает свой план. Если пользователь не подтвердил — остановись после плана.
 
 ## Цикл
 
-Порядок — список `skills` в общем `settings.yaml`. Пример в `settings.example.yaml`:
+`settings.skills` — набор имён атомарных скиллов, не конвейер. Порядок списка не задаёт pipeline.
 
 ```
 loop:
-    for skill in settings.skills:
-        run skill
-    → снова с первого
+    каждый скилл из settings.skills — атомарно, по своему SKILL.md
+    → снова
 ```
 
-1. Не добавляй шаги, которых нет в `settings.skills`.
+1. Не добавляй скиллы, которых нет в `settings.skills`.
 2. Не выдумывай условие остановки цикла и не ставь расписание / sleep.
 3. Цикл продолжается, пока пользователь не остановит.
-4. На каждой итерации запускай скилл целиком по его `SKILL.md`. Локальный `once` вызывает существующую команду `plan` каждого `scripts/run.py`.
+4. Каждый скилл запускай целиком по его `SKILL.md`. Локальный `once` вызывает существующую команду `plan` каждого `scripts/run.py`.
 5. Всем скиллам передавай **один** `--settings` (этот файл) и **один** `--storage`.
-6. `sdd-auto-story-to-release`, если он в каталоге, по-прежнему ждёт ключ release Story (пользователь, CLI или `storage.sdd-auto-story-to-release.release_key`). Не подставляй ключ release-задачи из `sdd-auto-story-to-uat`, если в storage его секции нет.
+6. `sdd-auto-story-to-release`, если он в списке, по-прежнему ждёт ключ release Story (пользователь, CLI или `storage.sdd-auto-story-to-release.release_key`). Не подставляй ключ release-задачи из `sdd-auto-story-to-uat`, если в storage его секции нет.
 
-Добавить пятый скилл: строка в `skills` (id или path) и при необходимости секция с его именем. Убрать скилл: удалить строку из `skills`. Код оркестратора не меняй.
+Добавить скилл: имя в `skills` (и при необходимости секция с тем же именем). Убрать: удалить имя из `skills`. Код оркестратора не меняй.
 
 ## Settings и storage
 
