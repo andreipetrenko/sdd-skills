@@ -1,0 +1,59 @@
+# Скопируй этот файл в qa.config.yaml и правь только его.
+# active переключает проект. task переключает задачу.
+# URL стенда — подпись для отчёта. Агент его не открывает и не вызывает curl.
+# Пароли и персональные данные сюда не писать.
+# qa.config.yaml в .gitignore: в task часто лежит текст текущей задачи.
+
+active: shop
+
+projects:
+  shop:
+    root: .
+    base_branch: main
+    stands:
+      - id: stage
+        url: https://stage.example
+    roles:
+      - id: buyer
+        note: тестовый покупатель
+    severity:
+      - blocker
+      - critical
+      - major
+      - minor
+    verdicts:
+      - можно принимать
+      - есть дефекты
+      - блокер
+    surfaces:
+      - forms
+      - permissions
+      - lists
+  billing:
+    root: /absolute/path/to/billing
+    base_branch: develop
+    stands: []
+    roles: []
+    severity:
+      - blocker
+      - major
+      - minor
+    verdicts:
+      - можно принимать
+      - есть дефекты
+      - блокер
+    surfaces: []
+
+task:
+  id: SHOP-104
+  branch: feature/SHOP-104
+  stand: stage
+  role: buyer
+  build: ""
+  acceptance: |
+    Покупатель оформляет заказ без оплаты картой.
+  notes: ""
+  severity: ""
+  verdict: ""
+  bug_id: ""
+  fix_branch: ""

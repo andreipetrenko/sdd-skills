@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from sdd_auto_impr_to_release.settings import (
+    ORCHESTRATOR_SKILL,
+    SettingsError,
+    storage_path_from_data,
+)
+
+
+def empty_storage(skill_ids: tuple[str, ...] = ()) -> dict[str, Any]:
+    return {name: {} for name in skill_ids}
+
+
+def load_storage(path: str | Path, *, create: bool = False) -> dict[str, Any]:
+    storage_path = Path(path).expanduser().resolve()
+    if not storage_path.is_file():
+        if not create:
+            raise SettingsError(f"Storage file not found: {storage_path}")
+        storage_path.parent.mkdir(parents=True, exist_ok=True)
+        data = empty_storage()
+        save_storage(storage_path, data)
+        return data
+    data = yaml.safe_load(storage_path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise SettingsError("storage.yaml must be a mapping")
+    return data
+
+
+def save_storage(path: str | Path, data: dict[str, Any]) -> Path:
+    storage_path = Path(path).expanduser().resolve()
+    storage_path.parent.mkdir(parents=True, exist_ok=True)
+    storage_path.write_text(
+        yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    return storage_path
+
+
+def get_section(data: dict[str, Any], skill: str) -> dict[str, Any]:
+    raw = data.get(skill)
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def put_section(
+    path: str | Path,
+    skill: str,
+    payload: dict[str, Any],
+    *,
+    create: bool = True,
+) -> dict[str, Any]:
+    data = load_storage(path, create=create)
+    section = get_section(data, skill)
+    section.update(payload)
+    data[skill] = section
+    save_storage(path, data)
+    return section
+
+
+def find_storage_file(
+    explicit: str | Path | None = None,
+    *,
+    settings_path: str | Path | None = None,
+    create: bool = False,
+) -> Path | None:
+    if explicit:
+        path = Path(explicit).expanduser().resolve()
+        if create and not path.is_file():
+            save_storage(path, empty_storage())
+        return path
+    if settings_path:
+        settings = Path(settings_path).expanduser().resolve()
+        if settings.is_file():
+            data = yaml.safe_load(settings.read_text(encoding="utf-8")) or {}
+            if isinstance(data, dict):
+                from_settings = storage_path_from_data(data, settings_path=settings)
+                if from_settings is not None:
+                    if create and not from_settings.is_file():
+                        save_storage(from_settings, empty_storage())
+                    return from_settings
+    cwd = Path.cwd()
+    candidates = [
+        cwd / "storage.yaml",
+        cwd / ORCHESTRATOR_SKILL / "storage.yaml",
+        cwd / ".gigacode/skills" / ORCHESTRATOR_SKILL / "storage.yaml",
+        cwd / ".gigacode_vsc/skills" / ORCHESTRATOR_SKILL / "storage.yaml",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    if create:
+        fallback = cwd / "storage.yaml"
+        save_storage(fallback, empty_storage())
+        return fallback
+    return None

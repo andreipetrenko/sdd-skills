@@ -1,5 +1,7 @@
 # settings.yaml
 
+Общий файл оркестратора `sdd-auto-impr-to-release`. Этот скилл читает общие блоки `stories`, `release`, `component` / `components`, `related`. Ключ release Story — CLI или `storage.sdd-auto-story-to-release.release_key`. `--settings` / `--storage`.
+
 Путь по умолчанию: `settings.yaml`. Переопределение: `--settings PATH`.
 
 Токены в YAML не клади.

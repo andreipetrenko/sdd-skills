@@ -14,7 +14,7 @@ description: >-
 
 MCP Jira и MCP Bitbucket **уже подключены**. Не спрашивай токены. Не вызывай REST Jira/Bitbucket. Не пиши `curl` к `/rest/api`. Если нужного MCP-инструмента нет — остановись и назови недостающее действие.
 
-Параметры только из `settings.yaml`. Схема: `references/settings.md`. MCP: `references/mcp.md`. OpenSpec: `references/openspec.md`.
+Параметры только из общего `settings.yaml` оркестратора `sdd-auto-impr-to-release` (секция `sdd-auto-impr-to-story` + общие блоки). Схема: `references/settings.md`. MCP: `references/mcp.md`. OpenSpec: `references/openspec.md`. Между скиллами данные — в общем `storage.yaml` (`--storage`).
 
 Локальный CLI — только JQL, план полей и OpenSpec. Запись в Jira и Bitbucket — только MCP.
 

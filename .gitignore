@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 sdd-skills.zip
 sdd-skills.bundle
+qa.config.yaml

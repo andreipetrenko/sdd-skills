@@ -11,6 +11,7 @@ from sdd_auto_story_to_ift.mcp import JIRA_TOOL_ALIASES, match_transition, parse
 from sdd_auto_story_to_ift.models import JiraIssue, children_from_issue, issues_from_search
 from sdd_auto_story_to_ift.plan import build_issue_plan, build_plan
 from sdd_auto_story_to_ift.settings import SettingsError, find_settings_file, load_settings
+from sdd_auto_story_to_ift.storage import find_storage_file, record_output
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -26,36 +27,46 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    storage_path = find_storage_file(
+        args.storage, settings_path=settings.path, create=bool(args.storage)
+    )
+
     try:
         if args.command == "plan":
-            print(json.dumps(build_plan(settings), ensure_ascii=False, indent=2))
+            plan = build_plan(settings)
+            record_output(storage_path, "plan", plan)
+            print(json.dumps(plan, ensure_ascii=False, indent=2))
             return 0
         if args.command == "jql":
-            print(settings.source.jql())
+            jql = settings.source.jql()
+            record_output(storage_path, "jql", jql)
+            print(jql)
             return 0
         if args.command == "children-jql":
-            print(settings.children_jql(args.issue))
+            jql = settings.children_jql(args.issue)
+            record_output(storage_path, "children-jql", jql)
+            print(jql)
             return 0
         if args.command == "issue-plan":
             story, children = _story_and_children(args)
             transitions = _load_json_arg(args.transitions) if args.transitions else None
-            print(
-                json.dumps(
-                    build_issue_plan(settings, story, children, transitions=transitions),
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            )
+            plan = build_issue_plan(settings, story, children, transitions=transitions)
+            record_output(storage_path, "issue-plan", plan)
+            print(json.dumps(plan, ensure_ascii=False, indent=2))
             return 0
         if args.command == "evaluate":
             story, children = _story_and_children(args)
             result = evaluate_story(settings, story, children)
-            print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+            payload = result.to_dict()
+            record_output(storage_path, "evaluate", payload)
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
             return 0
         if args.command == "match-transition":
             raw = _load_json_arg(args.transitions) if args.transitions else args.name
             matched = match_transition(parse_transitions(raw), settings.target.statuses)
-            print(json.dumps({"matched": matched}, ensure_ascii=False, indent=2))
+            payload = {"matched": matched}
+            record_output(storage_path, "match-transition", payload)
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
             return 0 if matched else 1
         parser.print_help()
         return 2
@@ -72,7 +83,8 @@ def build_parser() -> argparse.ArgumentParser:
             "план и оценка перехода. Запись в Jira — только через MCP."
         ),
     )
-    parser.add_argument("--settings", help="Path to settings.yaml")
+    parser.add_argument("--settings", help="Path to shared settings.yaml")
+    parser.add_argument("--storage", help="Path to shared storage.yaml")
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("plan", help="Печатает план MCP-конвейера из settings.yaml")

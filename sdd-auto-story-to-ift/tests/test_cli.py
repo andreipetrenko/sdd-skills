@@ -107,6 +107,26 @@ def test_mcp_aliases(settings_file: Path, capsys):
     assert "create" not in data["jira"]
 
 
+def test_plan_writes_storage(settings_file: Path, tmp_path: Path, capsys):
+    storage = tmp_path / "storage.yaml"
+    assert (
+        main(
+            [
+                "--settings",
+                str(settings_file),
+                "--storage",
+                str(storage),
+                "plan",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    text = storage.read_text(encoding="utf-8")
+    assert "sdd-auto-story-to-ift" in text
+    assert "Ready for IFT" in text
+
+
 def test_missing_settings_returns_2(tmp_path: Path, capsys):
     missing = tmp_path / "nope.yaml"
     assert main(["--settings", str(missing), "jql"]) == 2

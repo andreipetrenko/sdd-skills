@@ -1,48 +1,151 @@
-# Copy to settings.yaml and fill in your Jira / Bitbucket values.
+# Shared settings owned by sdd-auto-impr-to-release.
+# Atomic skills read this file (or a copy named settings.yaml).
+# Conflicting keys live under the skill name. Shared keys stay at the top.
 # Do not put tokens here. Jira and Bitbucket go through the agent's MCP servers.
 
 # Optional: only used to print browse URLs in the report.
 jira:
   base_url: https://jira.example.com
 
-# Вход скилла — ключ release Story (CLI / пользователь), не этот блок.
+# Репозиторий спек (sdd-auto-impr-to-story, этапы A и B)
+bitbucket:
+  repository: https://bitbucket.org/workspace/specs.git
+  default_branch: main
+  source_branch_pattern: "feature/{key}"
+  story_branch_pattern: "feature/{key}"
+  task_branch_pattern: "feature/{key}"
+  # Дополнительные репы для поиска PR (sdd-auto-story-to-uat)
+  repositories:
+    - https://bitbucket.org/workspace/payments.git
 
-# Состав релиза: те же Story, что у sdd-auto-story-to-uat
+# Репозиторий компонента (impr-to-story этап C, story-to-release)
+component:
+  name: backend
+  repository: https://bitbucket.org/workspace/payments.git
+  default_branch: master
+  task_branch_pattern: "task/{key}"
+  story_branch_pattern: "feature/{key}"
+
+# Связанная задача / таска компонента (impr-to-story) и fallback Component (story-to-release)
+related:
+  issue_type: Task
+  link_type: Relates
+  component: backend
+  component_from_source: true
+  # project: DEV
+  label: sdd-impl
+  status: To Do
+  summary_pattern: "[{component}] {story_key}: {story_summary}"
+  in_progress_status: В работе
+  done_status: Сделан
+
+# Story состава релиза (story-to-uat, story-to-release)
 stories:
   issue_type: Story
   via: both              # parent | linked | both
   # link_type: Relates
   # project: DEV
+  # status: Ready for IFT
 
-# Номер релиза и имя ветки — как у sdd-auto-story-to-uat
+# Номер релиза и паттерн release-ветки (story-to-uat, story-to-release)
 release:
   # number: "1.2"
   # number_field: fixVersions
   number_pattern: '(\d+(?:\.\d+)*)'
   branch_pattern: "release/{number}"
 
-# Репозитории компонентов. Имя = Jira Component (sdd-auto-impr-to-story).
-# Один компонент — тот же блок, что у impr-to-story:
-component:
-  name: backend
-  repository: https://bitbucket.org/workspace/payments.git
-  default_branch: master
-  story_branch_pattern: "feature/{key}"
+# Какие PR учитывать (story-to-uat)
+pr:
+  include_child_keys: true
+  ignore_destination_prefixes:
+    - feature/
+    - task/
 
-# Несколько компонентов:
-# components:
-#   - name: backend
-#     repository: https://bitbucket.org/workspace/payments.git
-#     default_branch: master
-#     story_branch_pattern: "feature/{key}"
-#   - name: ui
-#     repository: https://bitbucket.org/workspace/ui.git
-#     default_branch: master
-#     story_branch_pattern: "feature/{key}"
+# После merge BR/FR: Improvement в работу (impr-to-story)
+after_merge:
+  statuses:
+    - В работе
+    - In Progress
 
-# Fallback имени Component, если у Story поле пустое (impr-to-story).
-related:
-  component: backend
+# После merge кода: финальный статус Improvement (impr-to-story)
+improvement_done:
+  statuses:
+    - Сделан
+    - Done
+
+openspec:
+  capabilities:
+    - business-requirements
+    - functional-requirements
+  change_id_pattern: "{source_key}"
+  implementation_capability: code-changes
+  implementation_change_id_pattern: "{task_key}"
 
 limits:
+  max_issues: 20
+  max_children: 100
   max_stories: 100
+  max_prs: 100
+
+# Shared storage for passing information between skills
+storage:
+  path: storage.yaml
+
+# Attached atomic skills: names only. Not a pipeline order.
+# Each name resolves to <name>/scripts/run.py next to this skill.
+# Add or remove a skill here — not in orchestrator code.
+skills:
+  - sdd-auto-impr-to-story
+  - sdd-auto-story-to-ift
+  - sdd-auto-story-to-uat
+  - sdd-auto-story-to-release
+
+# --- skill sections: keys that would otherwise collide ---
+
+sdd-auto-impr-to-story:
+  source:
+    project: IMPR
+    issue_type: Improvement
+    label: ready-for-sdd
+    status: To Do
+  story:
+    project: DEV
+    issue_type: Story
+    label: sdd-story
+    status: To Do
+    link_type: Relates
+    summary_pattern: "{source_key}: {source_summary}"
+    done_status: Сделан
+
+sdd-auto-story-to-ift:
+  source:
+    project: DEV
+    issue_type: Story
+    label: sdd-story
+    status: In Progress
+  children:
+    issue_type:
+      - Task
+      - Sub-task
+      - Subtask
+    ready_status: Готов
+  target:
+    statuses:
+      - Ready for IFT
+
+sdd-auto-story-to-uat:
+  source:
+    project: REL
+    issue_type: Task
+    label: release
+    status: In Progress
+  children:
+    issue_type:
+      - Task
+      - Sub-task
+      - Subtask
+  target:
+    statuses:
+      - Ready for UAT
+
+sdd-auto-story-to-release: {}

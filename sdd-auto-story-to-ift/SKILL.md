@@ -15,7 +15,7 @@ description: >-
 
 MCP Jira **уже подключён**. Не спрашивай токены. Не вызывай REST Jira. Не пиши `curl` к `/rest/api`. Если нужного MCP-инструмента нет — остановись и назови недостающее действие.
 
-Параметры только из `settings.yaml`. Схема: `references/settings.md`. MCP: `references/mcp.md`.
+Параметры только из общего `settings.yaml` оркестратора `sdd-auto-impr-to-release` (секция `sdd-auto-story-to-ift` + общие блоки). Схема: `references/settings.md`. MCP: `references/mcp.md`. Между скиллами данные — в общем `storage.yaml` (`--storage`).
 
 Локальный CLI — только JQL, план и оценка статусов. Запись в Jira — только MCP.
 

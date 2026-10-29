@@ -17,6 +17,7 @@ from sdd_auto_impr_to_story.openspec import (
 from sdd_auto_impr_to_story.mcp import BITBUCKET_TOOL_ALIASES, JIRA_TOOL_ALIASES
 from sdd_auto_impr_to_story.plan import build_issue_plan, build_plan
 from sdd_auto_impr_to_story.settings import SettingsError, find_settings_file, load_settings
+from sdd_auto_impr_to_story.storage import find_storage_file, record_output
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,12 +42,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    storage_path = find_storage_file(
+        args.storage, settings_path=settings.path, create=bool(args.storage)
+    )
+
     try:
         if args.command == "plan":
-            print(json.dumps(build_plan(settings), ensure_ascii=False, indent=2))
+            plan = build_plan(settings)
+            record_output(storage_path, "plan", plan)
+            print(json.dumps(plan, ensure_ascii=False, indent=2))
             return 0
         if args.command == "jql":
-            print(settings.source.jql())
+            jql = settings.source.jql()
+            record_output(storage_path, "jql", jql)
+            print(jql)
             return 0
         if args.command == "issue-plan":
             source = JiraIssue(
@@ -57,15 +66,11 @@ def main(argv: list[str] | None = None) -> int:
                 status=settings.source.status or "",
                 components=tuple(args.component) if args.component else (),
             )
-            print(
-                json.dumps(
-                    build_issue_plan(
-                        settings, source, story_key=args.story, task_key=args.task
-                    ),
-                    ensure_ascii=False,
-                    indent=2,
-                )
+            plan = build_issue_plan(
+                settings, source, story_key=args.story, task_key=args.task
             )
+            record_output(storage_path, "issue-plan", plan)
+            print(json.dumps(plan, ensure_ascii=False, indent=2))
             return 0
         if args.command == "scaffold-specs":
             return _cmd_scaffold_specs(settings, args)
@@ -88,7 +93,8 @@ def build_parser() -> argparse.ArgumentParser:
             "scaffold and validate OpenSpec BR/FR. Jira and Bitbucket writes go through MCP."
         ),
     )
-    parser.add_argument("--settings", help="Path to settings.yaml")
+    parser.add_argument("--settings", help="Path to shared settings.yaml")
+    parser.add_argument("--storage", help="Path to shared storage.yaml")
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("plan", help="Print the MCP workflow plan from settings.yaml")

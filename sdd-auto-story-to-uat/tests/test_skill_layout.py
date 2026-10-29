@@ -31,5 +31,5 @@ def test_example_settings_parse():
     assert settings.source.issue_type == "Task"
     assert settings.stories.via == "both"
     assert settings.release.branch_patterns == ("release/{number}",)
-    assert settings.bitbucket.repositories[0].endswith("payments.git")
+    assert any(item.endswith("payments.git") for item in settings.bitbucket.repositories)
     assert "Ready for UAT" in settings.target.statuses

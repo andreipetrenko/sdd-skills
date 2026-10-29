@@ -11,6 +11,10 @@ class SettingsError(ValueError):
     pass
 
 
+SKILL_NAME = "sdd-auto-story-to-release"
+ORCHESTRATOR_SKILL = "sdd-auto-impr-to-release"
+
+
 DEFAULT_STORY_ISSUE_TYPES = ("Story",)
 DEFAULT_RELEASE_BRANCH_PATTERNS = ("release/{number}",)
 DEFAULT_NUMBER_PATTERN = r"(\d+(?:\.\d+)*)"
@@ -105,7 +109,62 @@ def load_settings(path: str | Path) -> Settings:
     return parse_settings(data, path=settings_path)
 
 
+def catalog_section_names(data: dict[str, Any]) -> set[str]:
+    names = {ORCHESTRATOR_SKILL, SKILL_NAME}
+    if not isinstance(data, dict):
+        return names
+    raw = data.get("skills") if "skills" in data else data.get("skill")
+    if raw is None:
+        return names
+    items = [raw] if isinstance(raw, str) else raw if isinstance(raw, list) else []
+    for item in items:
+        ident = _catalog_id(item)
+        if ident:
+            names.add(ident)
+    return names
+
+
+def _catalog_id(raw: Any) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    if not text or text.startswith(".") or text.startswith("/") or "/" in text or text.endswith(".py"):
+        return None
+    return text
+
+
+def slice_settings(data: dict[str, Any], skill: str = SKILL_NAME) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {}
+    drop = catalog_section_names(data) | {skill}
+    merged = {key: value for key, value in data.items() if key not in drop}
+    section = data.get(skill)
+    if isinstance(section, dict):
+        merged.update(section)
+    return merged
+
+
+def storage_path_from_data(
+    data: dict[str, Any],
+    *,
+    settings_path: Path | None = None,
+) -> Path | None:
+    raw = data.get("storage")
+    value: Any = None
+    if isinstance(raw, str):
+        value = raw
+    elif isinstance(raw, dict):
+        value = raw.get("path")
+    if not value:
+        return None
+    path = Path(str(value)).expanduser()
+    if not path.is_absolute() and settings_path is not None:
+        path = settings_path.parent / path
+    return path.resolve()
+
+
 def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
+    data = slice_settings(data)
     jira = data.get("jira") or {}
     base_url = str(jira.get("base_url") or "").strip() or None
     stories = _stories_config(data.get("stories") or data.get("story"))
@@ -149,21 +208,29 @@ def parse_settings(data: dict[str, Any], path: Path | None = None) -> Settings:
 def find_settings_file(explicit: str | Path | None = None) -> Path:
     if explicit:
         return Path(explicit).expanduser().resolve()
+    cwd = Path.cwd()
     candidates = [
-        Path.cwd() / "settings.yaml",
-        Path.cwd() / "sdd-auto-story-to-release" / "settings.yaml",
-        Path.cwd() / ".gigacode/skills/sdd-auto-story-to-release/settings.yaml",
-        Path.cwd() / ".gigacode_vsc/skills/sdd-auto-story-to-release/settings.yaml",
-        Path.cwd() / "assets" / "settings.example.yaml",
-        Path.cwd() / "sdd-auto-story-to-release" / "assets" / "settings.example.yaml",
-        Path.cwd() / ".gigacode/skills/sdd-auto-story-to-release/assets/settings.example.yaml",
+        cwd / "settings.yaml",
+        cwd / ORCHESTRATOR_SKILL / "settings.yaml",
+        cwd / ".gigacode/skills" / ORCHESTRATOR_SKILL / "settings.yaml",
+        cwd / ".gigacode_vsc/skills" / ORCHESTRATOR_SKILL / "settings.yaml",
+        cwd / SKILL_NAME / "settings.yaml",
+        cwd / ".gigacode/skills" / SKILL_NAME / "settings.yaml",
+        cwd / ".gigacode_vsc/skills" / SKILL_NAME / "settings.yaml",
+        cwd / "assets" / "settings.example.yaml",
+        cwd / ORCHESTRATOR_SKILL / "settings.example.yaml",
+        cwd / ORCHESTRATOR_SKILL / "assets" / "settings.example.yaml",
+        cwd / SKILL_NAME / "settings.example.yaml",
+        cwd / SKILL_NAME / "assets" / "settings.example.yaml",
+        cwd / ".gigacode/skills" / ORCHESTRATOR_SKILL / "assets/settings.example.yaml",
+        cwd / ".gigacode/skills" / SKILL_NAME / "assets/settings.example.yaml",
     ]
     for candidate in candidates:
         if candidate.is_file():
             return candidate
     raise SettingsError(
-        "settings.yaml not found. Copy settings.example.yaml to settings.yaml "
-        "or pass --settings."
+        "settings.yaml not found. Copy the shared settings.example.yaml "
+        f"from {ORCHESTRATOR_SKILL} to settings.yaml or pass --settings."
     )
 
 

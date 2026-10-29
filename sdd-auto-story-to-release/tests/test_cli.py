@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
+
 from sdd_auto_story_to_release.cli import main
 
 
@@ -71,3 +73,24 @@ def test_missing_settings_returns_2(tmp_path: Path, capsys):
     missing = tmp_path / "nope.yaml"
     assert main(["--settings", str(missing), "plan"]) == 2
     assert "not found" in capsys.readouterr().err.lower()
+
+
+def test_release_key_from_storage(settings_file: Path, tmp_path: Path, capsys):
+    storage = tmp_path / "storage.yaml"
+    storage.write_text(
+        yaml.safe_dump({"sdd-auto-story-to-release": {"release_key": "REL-12"}}),
+        encoding="utf-8",
+    )
+    assert (
+        main(
+            [
+                "--settings",
+                str(settings_file),
+                "--storage",
+                str(storage),
+                "stories-jql",
+            ]
+        )
+        == 0
+    )
+    assert 'parent = "REL-12"' in capsys.readouterr().out

@@ -11,3 +11,4 @@ settings.yaml
 .coverage
 htmlcov/
 *.log
+storage.yaml
